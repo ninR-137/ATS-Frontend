@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Archived Applicants')}"></head>
+<body class="app-body">
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div th:replace="~{fragments/sidebar :: sidebar(page='applicants')}"></div>
+<div class="app-main">
+  <header class="app-topbar">
+    <button id="sidebarToggle" class="topbar-icon-btn mobile-toggle me-2"><i class="fas fa-bars"></i></button>
+    <div class="topbar-breadcrumb">
+      <p class="topbar-title">Archived Applicants</p>
+      <p class="topbar-subtitle">Recover archived applicants tracked by this frontend workspace</p>
+    </div>
+    <div class="topbar-actions d-flex gap-2">
+      <a href="/applicants" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Applicants</a>
+      <button id="bulkRecoverBtn" class="btn btn-success btn-sm" disabled><i class="fas fa-rotate-left me-1"></i>Recover Selected</button>
+    </div>
+  </header>
+
+  <main class="app-content">
+    <div class="alert alert-secondary small">
+      This page shows archived applicants currently known to the frontend. Bulk recovery uses the official recovery endpoint from the API spec.
+    </div>
+
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th style="width:40px;padding-left:1rem;"><input type="checkbox" id="selectAllArchived" class="form-check-input" /></th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Facility</th>
+                <th>Archived At</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="archivedApplicantsBody">
+              <tr><td colspan="7" class="text-muted p-4 text-center">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  ATS.initPage();
+
+  var selectedArchivedIds = new Set();
+
+  function getArchivedApplicantRegistry() {
+    try {
+      return JSON.parse(localStorage.getItem('ats_archived_applicants') || '[]');
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function setArchivedApplicantRegistry(entries) {
+    localStorage.setItem('ats_archived_applicants', JSON.stringify(entries || []));
+  }
+
+  function removeArchivedApplicantIds(ids) {
+    var idSet = new Set((ids || []).map(function(id) { return String(id); }));
+    setArchivedApplicantRegistry(getArchivedApplicantRegistry().filter(function(item) {
+      return !idSet.has(String(item.id));
+    }));
+  }
+
+  function renderArchivedApplicants() {
+    var rows = getArchivedApplicantRegistry().slice().sort(function(a, b) {
+      return new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0);
+    });
+    var tbody = document.getElementById('archivedApplicantsBody');
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-muted p-4 text-center">No archived applicants are currently tracked.</td></tr>';
+      document.getElementById('bulkRecoverBtn').disabled = true;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function(row) {
+      var id = String(row.id || '');
+      return '<tr>' +
+        '<td style="padding-left:1rem;"><input type="checkbox" class="form-check-input archived-row-check" data-id="' + id + '" ' + (selectedArchivedIds.has(id) ? 'checked' : '') + ' /></td>' +
+        '<td class="fw-semibold">' + (row.name || 'Applicant') + '</td>' +
+        '<td class="text-muted">' + (row.email || '—') + '</td>' +
+        '<td class="text-muted">' + (row.role || '—') + '</td>' +
+        '<td class="text-muted">' + (row.facilityName || '—') + '</td>' +
+        '<td class="text-muted small">' + ATS.formatDateTime(row.archivedAt) + '</td>' +
+        '<td><button class="btn btn-sm btn-outline-success" data-recover-applicant="' + id + '"><i class="fas fa-rotate-left"></i></button></td>' +
+      '</tr>';
+    }).join('');
+
+    syncBulkRecoverState();
+  }
+
+  function syncBulkRecoverState() {
+    document.getElementById('bulkRecoverBtn').disabled = selectedArchivedIds.size === 0;
+  }
+
+  document.getElementById('selectAllArchived').addEventListener('change', function() {
+    var checked = this.checked;
+    document.querySelectorAll('.archived-row-check').forEach(function(input) {
+      input.checked = checked;
+      if (checked) selectedArchivedIds.add(String(input.dataset.id));
+      else selectedArchivedIds.delete(String(input.dataset.id));
+    });
+    syncBulkRecoverState();
+  });
+
+  document.getElementById('archivedApplicantsBody').addEventListener('change', function(e) {
+    if (!e.target.classList.contains('archived-row-check')) return;
+    var id = String(e.target.dataset.id);
+    if (e.target.checked) selectedArchivedIds.add(id);
+    else selectedArchivedIds.delete(id);
+    syncBulkRecoverState();
+  });
+
+  document.getElementById('archivedApplicantsBody').addEventListener('click', async function(e) {
+    var btn = e.target.closest('[data-recover-applicant]');
+    if (!btn) return;
+
+    var id = btn.getAttribute('data-recover-applicant');
+    var confirmSingleRecover = await ATS.confirm('Recover this applicant?', { title: 'Recover Applicant', confirmText: 'Recover' });
+    if (!confirmSingleRecover) return;
+
+    btn.disabled = true;
+    ATS.setBlockingBusy(true, 'Recovering applicant. Please do not refresh or navigate away.');
+    try {
+      var response = await ATS.apiFetch('/applicants/' + id + '/recover', { method: 'POST' });
+      removeArchivedApplicantIds([id]);
+      selectedArchivedIds.delete(String(id));
+      ATS.notify('success', (response && response.message) || 'Applicant recovered successfully');
+      renderArchivedApplicants();
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to recover applicant');
+    } finally {
+      ATS.setBlockingBusy(false);
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('bulkRecoverBtn').addEventListener('click', async function() {
+    if (!selectedArchivedIds.size) return;
+    var confirmBulkRecover = await ATS.confirm('Recover the selected applicants?', { title: 'Recover Applicants', confirmText: 'Recover Selected' });
+    if (!confirmBulkRecover) return;
+
+    var btn = this;
+    btn.disabled = true;
+    ATS.setBlockingBusy(true, 'Recovering applicants. Please do not refresh or navigate away.');
+    try {
+      var ids = Array.from(selectedArchivedIds);
+      var response = await ATS.apiFetch('/applicants/bulk/recover', {
+        method: 'POST',
+        body: JSON.stringify({ applicantIds: ids.map(function(id) { return Number(id); }) })
+      });
+      var recoveredIds = (response && response.recoveredIds) || ids;
+      removeArchivedApplicantIds(recoveredIds);
+      selectedArchivedIds.clear();
+      document.getElementById('selectAllArchived').checked = false;
+      ATS.notify('success', (response && response.message) || 'Applicants recovered successfully');
+      renderArchivedApplicants();
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to recover applicants');
+    } finally {
+      ATS.setBlockingBusy(false);
+      btn.disabled = false;
+    }
+  });
+
+  renderArchivedApplicants();
+  /*]]>*/
+</script>
+</body>
+</html>

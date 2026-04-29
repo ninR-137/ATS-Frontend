@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Facility Users Workspace')}"></head>
+<body class="bg-light">
+<div class="container-fluid py-5 dashboard-shell">
+    <div class="row g-5">
+        <aside class="col-12 col-lg-3">
+            <div class="card shadow-lg border-0 rounded-4 admin-sidebar-card">
+                <div class="card-body p-5">
+                    <div class="text-center mb-5">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                             style="width:64px;height:64px;font-size:28px;">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2">Recruitment Management System</h4>
+                        <span id="roleBadge" class="badge text-bg-secondary fs-6 py-2">USER</span>
+                    </div>
+
+                    <div class="list-group list-group-flush rounded-3 mb-5">
+                        <a href="/dashboard" class="list-group-item list-group-item-action border-0 rounded-3 sidebar-nav-link py-3" data-nav="dashboard">
+                            <i class="fas fa-gauge-high me-3"></i><span class="fw-600">Dashboard</span>
+                        </a>
+                        <a href="/facilities/create" class="list-group-item list-group-item-action border-0 rounded-3 sidebar-nav-link py-3 admin-only" data-nav="create-facility">
+                            <i class="fas fa-square-plus me-3"></i><span class="fw-600">Create Facility</span>
+                        </a>
+                        <a href="/facilities/add" class="list-group-item list-group-item-action border-0 rounded-3 sidebar-nav-link py-3 admin-only" data-nav="add-facility-user">
+                            <i class="fas fa-user-plus me-3"></i><span class="fw-600">Add Facility User</span>
+                        </a>
+                        <a href="/admin-requests/pending" class="list-group-item list-group-item-action border-0 rounded-3 sidebar-nav-link py-3 admin-only" data-nav="admin-requests">
+                            <i class="fas fa-user-shield me-3"></i><span class="fw-600">Admin Requests</span>
+                        </a>
+                    </div>
+
+                    <button id="logoutBtn" class="btn btn-outline-secondary w-100 py-3">
+                        <i class="fas fa-right-from-bracket me-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="col-12 col-lg-9">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+                <div class="d-flex align-items-center gap-2">
+                    <a id="backToFacilityBtn" href="#" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Facility
+                    </a>
+                    <h2 class="fw-bold mb-0 fs-4">Facility Users Workspace</h2>
+                </div>
+                <div class="d-flex gap-2">
+                    <button id="reloadStatsBtn" class="btn btn-outline-primary btn-sm">Reload Stats</button>
+                    <button id="reloadApplicantsBtn" class="btn btn-primary btn-sm">Reload Applicants</button>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 admin-only" id="facilityUsersCard" style="display:none;">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6">Facility Users</h5>
+                    <button id="reloadUsersBtn" class="btn btn-outline-primary btn-sm">Reload</button>
+                </div>
+                <div class="card-body p-4 border-bottom">
+                    <form id="addFacilityUserForm" class="row g-3">
+                        <div class="col-12 col-md-8">
+                            <label for="facilityUserEmail" class="form-label">Add user by email</label>
+                            <input id="facilityUserEmail" type="email" class="form-control" placeholder="user@example.com" required>
+                        </div>
+                        <div class="col-12 col-md-4 d-grid align-self-end">
+                            <button type="submit" class="btn btn-primary">Add To Facility</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody id="facilityUsersTableBody">
+                            <tr>
+                                <td colspan="3" class="text-muted p-3">Loading...</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="mb-0 fw-bold fs-6">Applicant Stats</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3" id="statsGrid">
+                        <div class="col-12 col-md-4"><div class="border rounded-3 p-3"><div class="small text-muted">Total</div><div id="statTotal" class="fw-bold">-</div></div></div>
+                        <div class="col-12 col-md-4"><div class="border rounded-3 p-3"><div class="small text-muted">Pending</div><div id="statPending" class="fw-bold">-</div></div></div>
+                        <div class="col-12 col-md-4"><div class="border rounded-3 p-3"><div class="small text-muted">Hired</div><div id="statHired" class="fw-bold">-</div></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="mb-0 fw-bold fs-6">Applicants - Filters</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form id="applicantFilterForm" class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <label for="filterStatus" class="form-label">Status</label>
+                            <input id="filterStatus" class="form-control" placeholder="e.g. PENDING">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="filterRole" class="form-label">Role</label>
+                            <input id="filterRole" class="form-control" placeholder="e.g. Nurse">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="filterFromDate" class="form-label">From</label>
+                            <input id="filterFromDate" type="date" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="filterToDate" class="form-label">To</label>
+                            <input id="filterToDate" type="date" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-1">
+                            <label for="filterPage" class="form-label">Page</label>
+                            <input id="filterPage" type="number" min="0" value="0" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-1">
+                            <label for="filterSize" class="form-label">Size</label>
+                            <input id="filterSize" type="number" min="1" value="20" class="form-control">
+                        </div>
+                        <div class="col-12 d-flex gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+                            <button id="searchApplicantsBtn" type="button" class="btn btn-outline-primary btn-sm">Search</button>
+                        </div>
+                    </form>
+                    <div class="row g-3 mt-1">
+                        <div class="col-12 col-md-8">
+                            <label for="searchQuery" class="form-label">Search q</label>
+                            <input id="searchQuery" class="form-control" placeholder="Search applicants by term">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="searchLimit" class="form-label">Limit</label>
+                            <input id="searchLimit" type="number" min="1" value="20" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-2 d-grid align-self-end">
+                            <button id="clearSearchBtn" type="button" class="btn btn-outline-secondary btn-sm">Clear Search</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6">Applicants</h5>
+                    <button id="bulkStatusBtn" class="btn btn-outline-primary btn-sm">Bulk Status Update</button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th><input id="selectAllApplicants" type="checkbox"></th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Added</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody id="applicantsTableBody">
+                            <tr>
+                                <td colspan="7" class="text-muted p-3">Loading...</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="mb-0 fw-bold fs-6">Add Applicant</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form id="addApplicantForm" class="row g-3" enctype="multipart/form-data">
+                        <div class="col-12 col-md-6">
+                            <label for="newApplicantName" class="form-label">Name</label>
+                            <input id="newApplicantName" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="newApplicantEmail" class="form-label">Email</label>
+                            <input id="newApplicantEmail" type="email" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="newApplicantPhone" class="form-label">Phone (optional)</label>
+                            <input id="newApplicantPhone" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="newApplicantRole" class="form-label">Role</label>
+                            <input id="newApplicantRole" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="newApplicantStatus" class="form-label">Status (optional)</label>
+                            <input id="newApplicantStatus" class="form-control" placeholder="e.g. PENDING">
+                        </div>
+                        <div class="col-12">
+                            <label for="newApplicantNotes" class="form-label">Notes (optional)</label>
+                            <textarea id="newApplicantNotes" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label for="newApplicantResume" class="form-label">Resume (required)</label>
+                            <input id="newApplicantResume" type="file" class="form-control" required>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">Create Applicant</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6">Selected Applicant Actions</h5>
+                    <span id="selectedApplicantBadge" class="badge text-bg-secondary">None Selected</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4 d-grid">
+                            <button id="viewApplicantBtn" class="btn btn-outline-primary">View Detail</button>
+                        </div>
+                        <div class="col-12 col-md-4 d-grid">
+                            <button id="downloadResumeBtn" class="btn btn-outline-primary">Download Resume</button>
+                        </div>
+                        <div class="col-12 col-md-4 d-grid">
+                            <button id="refreshApplicantActionsBtn" class="btn btn-outline-secondary">Refresh Applicants</button>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <form id="updateStatusForm" class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <label for="statusUpdateValue" class="form-label">PATCH status</label>
+                            <input id="statusUpdateValue" class="form-control" placeholder="ApplicantStatus" required>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="statusUpdateNotes" class="form-label">Notes (optional)</label>
+                            <input id="statusUpdateNotes" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-2 d-grid align-self-end">
+                            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                        </div>
+                    </form>
+
+                    <form id="updateApplicantForm" class="row g-3 mt-1" enctype="multipart/form-data">
+                        <div class="col-12 col-md-3"><input id="updName" class="form-control" placeholder="name"></div>
+                        <div class="col-12 col-md-3"><input id="updEmail" class="form-control" placeholder="email"></div>
+                        <div class="col-12 col-md-2"><input id="updPhone" class="form-control" placeholder="phone"></div>
+                        <div class="col-12 col-md-2"><input id="updRole" class="form-control" placeholder="role"></div>
+                        <div class="col-12 col-md-2"><input id="updResume" type="file" class="form-control"></div>
+                        <div class="col-12"><input id="updNotes" class="form-control" placeholder="notes"></div>
+                        <div class="col-12 d-flex justify-content-end"><button type="submit" class="btn btn-outline-primary btn-sm">PUT Applicant</button></div>
+                    </form>
+
+                    <form id="resendNotificationForm" class="row g-3 mt-1">
+                        <div class="col-12 col-md-8">
+                            <label for="notificationType" class="form-label">Resend notification type</label>
+                            <select id="notificationType" class="form-select">
+                                <option value="INTERVIEW_SCHEDULED">INTERVIEW_SCHEDULED</option>
+                                <option value="ORIENTATION_SCHEDULED">ORIENTATION_SCHEDULED</option>
+                                <option value="HIRED">HIRED</option>
+                                <option value="STATUS_UPDATE">STATUS_UPDATE</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4 d-grid align-self-end">
+                            <button type="submit" class="btn btn-outline-primary btn-sm">Resend</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="mb-0 fw-bold fs-6">Interview & Orientation</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form id="scheduleInterviewForm" class="row g-3">
+                        <div class="col-12 col-md-4"><label for="interviewDate" class="form-label">Interview datetime</label><input id="interviewDate" type="datetime-local" class="form-control" required></div>
+                        <div class="col-12 col-md-2"><label for="interviewDuration" class="form-label">Duration</label><input id="interviewDuration" type="number" class="form-control" value="60" required></div>
+                        <div class="col-12 col-md-3"><label for="interviewType" class="form-label">Type</label><input id="interviewType" class="form-control" value="PHONE" required></div>
+                        <div class="col-12 col-md-3"><label for="interviewNotes" class="form-label">Notes</label><input id="interviewNotes" class="form-control"></div>
+                        <div class="col-12 d-flex justify-content-end"><button type="submit" class="btn btn-primary btn-sm">Schedule Interview</button></div>
+                    </form>
+
+                    <form id="completeInterviewForm" class="row g-3 mt-2">
+                        <div class="col-12 col-md-3"><input id="completeInterviewId" class="form-control" placeholder="interviewId" required></div>
+                        <div class="col-12 col-md-3"><input id="completeInterviewNotes" class="form-control" placeholder="notes"></div>
+                        <div class="col-12 col-md-3"><input id="completeInterviewNewStatus" class="form-control" placeholder="newStatus(optional)"></div>
+                        <div class="col-12 col-md-3 d-grid"><button type="submit" class="btn btn-outline-primary btn-sm">Mark Interview Complete</button></div>
+                    </form>
+
+                    <form id="scheduleOrientationForm" class="row g-3 mt-2">
+                        <div class="col-12 col-md-4"><input id="orientationDate" type="datetime-local" class="form-control" required></div>
+                        <div class="col-12 col-md-2"><input id="orientationDuration" type="number" class="form-control" value="120" required></div>
+                        <div class="col-12 col-md-4"><input id="orientationDocs" class="form-control" placeholder="docs comma-separated"></div>
+                        <div class="col-12 col-md-2 d-grid"><button type="submit" class="btn btn-primary btn-sm">Schedule Orientation</button></div>
+                    </form>
+
+                    <form id="completeOrientationForm" class="row g-3 mt-2">
+                        <div class="col-12 col-md-4"><input id="completeOrientationId" class="form-control" placeholder="orientationId" required></div>
+                        <div class="col-12 col-md-6"><input id="completeOrientationNotes" class="form-control" placeholder="notes(optional)"></div>
+                        <div class="col-12 col-md-2 d-grid"><button type="submit" class="btn btn-outline-primary btn-sm">Mark Orientation Complete</button></div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6">Calendar</h5>
+                    <div class="d-flex gap-2">
+                        <button id="loadCalendarRangeBtn" class="btn btn-outline-primary btn-sm">Load Range</button>
+                        <button id="loadUpcomingCalendarBtn" class="btn btn-outline-primary btn-sm">Upcoming</button>
+                    </div>
+                </div>
+                <div class="card-body p-4 border-bottom">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-3"><label for="calendarStart" class="form-label">Start</label><input id="calendarStart" type="datetime-local" class="form-control"></div>
+                        <div class="col-12 col-md-3"><label for="calendarEnd" class="form-label">End</label><input id="calendarEnd" type="datetime-local" class="form-control"></div>
+                        <div class="col-12 col-md-2"><label for="calendarView" class="form-label">View</label><select id="calendarView" class="form-select"><option value="month">month</option><option value="week">week</option><option value="day">day</option><option value="agenda" selected>agenda</option></select></div>
+                        <div class="col-12 col-md-2"><label for="calendarFormat" class="form-label">Export</label><select id="calendarFormat" class="form-select"><option value="ics" selected>ics</option><option value="csv">csv</option><option value="json">json</option></select></div>
+                        <div class="col-12 col-md-2 d-grid align-self-end"><button id="exportCalendarBtn" class="btn btn-primary btn-sm">Export</button></div>
+                    </div>
+                    <div class="row g-3 mt-1">
+                        <div class="col-12 col-md-3"><input id="calendarInterviewId" class="form-control" placeholder="interviewId"></div>
+                        <div class="col-12 col-md-3 d-grid"><button id="getInterviewEventBtn" class="btn btn-outline-primary btn-sm">Get Event</button></div>
+                        <div class="col-12 col-md-3 d-grid"><button id="regenerateMeetingLinkBtn" class="btn btn-outline-primary btn-sm">Regenerate Link</button></div>
+                        <div class="col-12 col-md-3 d-flex gap-2">
+                            <select id="reminderType" class="form-select form-select-sm"><option value="24h">24h</option><option value="1h">1h</option></select>
+                            <button id="sendReminderBtn" class="btn btn-outline-primary btn-sm">Reminder</button>
+                        </div>
+                    </div>
+                    <form id="availabilityForm" class="row g-3 mt-1">
+                        <div class="col-12 col-md-5"><input id="availabilityStart" type="datetime-local" class="form-control" required></div>
+                        <div class="col-12 col-md-5"><input id="availabilityEnd" type="datetime-local" class="form-control" required></div>
+                        <div class="col-12 col-md-2 d-grid"><button type="submit" class="btn btn-outline-primary btn-sm">Check Availability</button></div>
+                    </form>
+                </div>
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody id="calendarEventsTableBody">
+                            <tr><td colspan="5" class="text-muted p-3">No events loaded.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const FACILITY_ID = /*[[${facilityId}]]*/ '';
+
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+        window.location.href = '/login';
+    }
+
+    let selectedApplicantId = null;
+    let isAdmin = false;
+
+    function parseJwt(jwt) {
+        try {
+            const payloadPart = jwt.split('.')[1] || '';
+            const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+            const padLen = (4 - (normalized.length % 4)) % 4;
+            return JSON.parse(atob(normalized + '='.repeat(padLen)));
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function collectNormalizedRoles(values) {
+        const queue = Array.isArray(values) ? [...values] : [values];
+        const normalized = [];
+
+        while (queue.length) {
+            const item = queue.shift();
+            if (!item) {
+                continue;
+            }
+
+            if (Array.isArray(item)) {
+                queue.push(...item);
+                continue;
+            }
+
+            if (typeof item === 'string') {
+                const parts = item.split(',').map(p => p.trim()).filter(Boolean);
+                normalized.push(...parts.map(p => p.toUpperCase()));
+                continue;
+            }
+
+            if (typeof item === 'object') {
+                queue.push(item.role, item.name, item.authority, item.value);
+            }
+        }
+
+        return [...new Set(normalized)];
+    }
+
+    function hasAdminRole(roleList) {
+        return roleList.some(role => role === 'ADMIN' || role === 'ROLE_ADMIN' || role.endsWith('_ADMIN'));
+    }
+
+    function applyRoleUiState() {
+        const roleBadge = document.getElementById('roleBadge');
+        roleBadge.textContent = isAdmin ? 'ADMIN' : 'USER';
+        roleBadge.className = isAdmin ? 'badge text-bg-danger fs-6 py-2' : 'badge text-bg-primary fs-6 py-2';
+
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = isAdmin ? '' : 'none';
+        });
+
+        document.getElementById('facilityUsersCard').style.display = isAdmin ? '' : 'none';
+    }
+
+    function notifyUser(type, message) {
+        if (typeof window.appNotify === 'function') {
+            window.appNotify(type, message);
+        }
+    }
+
+    function clearNotifications() {
+        if (typeof window.clearAppNotifications === 'function') {
+            window.clearAppNotifications();
+        }
+    }
+
+    function formatDateTime(value) {
+        if (!value) {
+            return '-';
+        }
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+            return value;
+        }
+        return new Intl.DateTimeFormat(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).format(date);
+    }
+
+    function toIsoLocalInput(dateObj) {
+        const pad = n => String(n).padStart(2, '0');
+        const yyyy = dateObj.getFullYear();
+        const mm = pad(dateObj.getMonth() + 1);
+        const dd = pad(dateObj.getDate());
+        const hh = pad(dateObj.getHours());
+        const mi = pad(dateObj.getMinutes());
+        return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+
+    function toDateOnly(value) {
+        const date = new Date(value);
+        const pad = n => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    async function apiFetch(path, options = {}) {
+        const config = {
+            ...options,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...(options.body ? {'Content-Type': 'application/json'} : {}),
+                ...(options.headers || {})
+            }
+        };
+
+        const res = await fetch(`${ATS.API_BASE}${path}`, config);
+        const text = await res.text();
+        let data = null;
+
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                data = text;
+            }
+        }
+
+        if (!res.ok) {
+            const message = (data && (data.message || data.error)) || `Request failed (${res.status})`;
+            const err = new Error(message);
+            err.status = res.status;
+            throw err;
+        }
+
+        return data;
+    }
+
+    async function apiFormFetch(path, formData, method = 'POST') {
+        const res = await fetch(`${ATS.API_BASE}${path}`, {
+            method,
+            headers: {
+                Authorization: `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        const text = await res.text();
+        let data = null;
+
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                data = text;
+            }
+        }
+
+        if (!res.ok) {
+            const message = (data && (data.message || data.error)) || `Request failed (${res.status})`;
+            const err = new Error(message);
+            err.status = res.status;
+            throw err;
+        }
+
+        return data;
+    }
+
+    async function resolveAdminAccess() {
+        if (isAdmin) {
+            return;
+        }
+
+        try {
+            await apiFetch('/admin-requests/pending');
+            isAdmin = true;
+        } catch (err) {
+            if (err && err.status === 401) {
+                localStorage.removeItem('jwt_token');
+                localStorage.removeItem('user_info');
+                window.location.href = '/login';
+            }
+        }
+    }
+
+    function getApplicantId(item) {
+        return item?.id ?? item?.applicantId ?? item?.applicant?.id ?? null;
+    }
+
+    function getApplicantStatus(item) {
+        return item?.status ?? item?.applicantStatus ?? 'UNKNOWN';
+    }
+
+    function getApplicantAddedDate(item) {
+        return item?.addedDate ?? item?.createdAt ?? item?.updatedAt ?? null;
+    }
+
+    function setSelectedApplicant(id) {
+        selectedApplicantId = id ? String(id) : null;
+        const badge = document.getElementById('selectedApplicantBadge');
+        if (!selectedApplicantId) {
+            badge.textContent = 'None Selected';
+            badge.className = 'badge text-bg-secondary';
+            return;
+        }
+
+        badge.textContent = `Applicant #${selectedApplicantId}`;
+        badge.className = 'badge text-bg-primary';
+    }
+
+    function extractPageList(payload) {
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+        if (Array.isArray(payload?.content)) {
+            return payload.content;
+        }
+        if (Array.isArray(payload?.items)) {
+            return payload.items;
+        }
+        if (Array.isArray(payload?.data)) {
+            return payload.data;
+        }
+        return [];
+    }
+
+    async function loadFacilityUsers() {
+        const tbody = document.getElementById('facilityUsersTableBody');
+        tbody.innerHTML = '<tr><td colspan="3" class="text-muted p-3">Loading...</td></tr>';
+
+        const payload = await apiFetch(`/admin/facilities/${FACILITY_ID}/users`);
+        const rows = Array.isArray(payload) ? payload : [];
+
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-muted p-3">No users found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(item => {
+            const userId = item?.id ?? item?.userId ?? '';
+            const email = item?.email ?? item?.userEmail ?? '-';
+            const role = item?.role ?? item?.authority ?? item?.userRole ?? '-';
+            return `
+                <tr>
+                    <td>${email}</td>
+                    <td>${role}</td>
+                    <td><button class="btn btn-sm btn-outline-danger" data-remove-user="${userId}" data-email="${email}">Remove</button></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function buildApplicantQueryFromFilters() {
+        const params = new URLSearchParams();
+        params.set('facilityId', FACILITY_ID);
+
+        const status = document.getElementById('filterStatus').value.trim();
+        const role = document.getElementById('filterRole').value.trim();
+        const fromDate = document.getElementById('filterFromDate').value;
+        const toDate = document.getElementById('filterToDate').value;
+        const page = document.getElementById('filterPage').value || '0';
+        const size = document.getElementById('filterSize').value || '20';
+
+        if (status) {
+            params.set('status', status);
+        }
+        if (role) {
+            params.set('role', role);
+        }
+        if (fromDate) {
+            params.set('fromDate', fromDate);
+        }
+        if (toDate) {
+            params.set('toDate', toDate);
+        }
+
+        params.set('page', page);
+        params.set('size', size);
+        params.set('sort', 'addedDate,desc');
+
+        return params;
+    }
+
+    async function loadApplicants() {
+        const tbody = document.getElementById('applicantsTableBody');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted p-3">Loading...</td></tr>';
+
+        const params = buildApplicantQueryFromFilters();
+        const payload = await apiFetch(`/applicants?${params.toString()}`);
+        const rows = extractPageList(payload);
+
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted p-3">No applicants found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(item => {
+            const applicantId = getApplicantId(item);
+            const name = item?.name ?? '-';
+            const email = item?.email ?? '-';
+            const role = item?.role ?? '-';
+            const status = getApplicantStatus(item);
+            const addedDate = getApplicantAddedDate(item);
+
+            return `
+                <tr>
+                    <td><input type="checkbox" class="applicant-select" value="${applicantId}"></td>
+                    <td>${name}</td>
+                    <td>${email}</td>
+                    <td>${role}</td>
+                    <td><span class="badge text-bg-secondary">${status}</span></td>
+                    <td><span class="facility-timestamp">${formatDateTime(addedDate)}</span></td>
+                    <td class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" data-select-applicant="${applicantId}">Select</button>
+                        <button class="btn btn-sm btn-outline-primary" data-view-applicant="${applicantId}">View</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function searchApplicants() {
+        const q = document.getElementById('searchQuery').value.trim();
+        if (!q) {
+            notifyUser('warning', 'Enter a search term first.');
+            return;
+        }
+
+        const tbody = document.getElementById('applicantsTableBody');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted p-3">Searching...</td></tr>';
+
+        const limit = document.getElementById('searchLimit').value || '20';
+        const status = document.getElementById('filterStatus').value.trim();
+
+        const params = new URLSearchParams();
+        params.set('q', q);
+        params.set('facilityId', FACILITY_ID);
+        params.set('limit', limit);
+        if (status) {
+            params.set('status', status);
+        }
+
+        const payload = await apiFetch(`/applicants/search?${params.toString()}`);
+        const rows = Array.isArray(payload) ? payload : extractPageList(payload);
+
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted p-3">No applicants match your search.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(item => {
+            const applicantId = getApplicantId(item);
+            const name = item?.name ?? '-';
+            const email = item?.email ?? '-';
+            const role = item?.role ?? '-';
+            const statusText = getApplicantStatus(item);
+            return `
+                <tr>
+                    <td><input type="checkbox" class="applicant-select" value="${applicantId}"></td>
+                    <td>${name}</td>
+                    <td>${email}</td>
+                    <td>${role}</td>
+                    <td><span class="badge text-bg-secondary">${statusText}</span></td>
+                    <td><span class="facility-timestamp">${formatDateTime(getApplicantAddedDate(item))}</span></td>
+                    <td class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" data-select-applicant="${applicantId}">Select</button>
+                        <button class="btn btn-sm btn-outline-primary" data-view-applicant="${applicantId}">View</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function loadApplicantStats() {
+        const params = new URLSearchParams();
+        params.set('facilityId', FACILITY_ID);
+
+        const fromDate = document.getElementById('filterFromDate').value;
+        const toDate = document.getElementById('filterToDate').value;
+        if (fromDate) {
+            params.set('fromDate', fromDate);
+        }
+        if (toDate) {
+            params.set('toDate', toDate);
+        }
+
+        const payload = await apiFetch(`/applicants/stats?${params.toString()}`);
+
+        const total = payload?.totalApplicants ?? payload?.total ?? payload?.count ?? '-';
+        const pending = payload?.pendingApplicants ?? payload?.pending ?? payload?.byStatus?.PENDING ?? '-';
+        const hired = payload?.hiredApplicants ?? payload?.hired ?? payload?.byStatus?.HIRED ?? '-';
+
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statPending').textContent = pending;
+        document.getElementById('statHired').textContent = hired;
+    }
+
+    function getSelectedApplicantIds() {
+        return Array.from(document.querySelectorAll('.applicant-select:checked'))
+            .map(cb => cb.value)
+            .filter(Boolean)
+            .map(v => Number(v));
+    }
+
+    function requireSelectedApplicant() {
+        if (!selectedApplicantId) {
+            notifyUser('warning', 'Select an applicant first.');
+            return false;
+        }
+        return true;
+    }
+
+    async function showApplicantDetail(applicantId) {
+        const payload = await apiFetch(`/applicants/${encodeURIComponent(applicantId)}`);
+        const summary = [
+            `Name: ${payload?.name ?? '-'}`,
+            `Email: ${payload?.email ?? '-'}`,
+            `Role: ${payload?.role ?? '-'}`,
+            `Status: ${payload?.status ?? '-'}`
+        ].join(' | ');
+        notifyUser('info', summary);
+    }
+
+    async function downloadApplicantResume(applicantId) {
+        const response = await fetch(`${ATS.API_BASE}/applicants/${encodeURIComponent(applicantId)}/resume`, {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Resume download failed (${response.status})`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `applicant-${applicantId}-resume`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    }
+
+    function extractCalendarRows(payload) {
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+        if (Array.isArray(payload?.events)) {
+            return payload.events;
+        }
+        if (Array.isArray(payload?.items)) {
+            return payload.items;
+        }
+        if (Array.isArray(payload?.content)) {
+            return payload.content;
+        }
+        return [];
+    }
+
+    function renderCalendarRows(rows) {
+        const tbody = document.getElementById('calendarEventsTableBody');
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted p-3">No events found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(item => {
+            const title = item?.title ?? item?.name ?? item?.applicantName ?? 'Event';
+            const type = item?.interviewType ?? item?.type ?? 'INTERVIEW';
+            const startDate = item?.startDate ?? item?.startDateTime ?? item?.scheduledDate ?? item?.start ?? '';
+            const endDate = item?.endDate ?? item?.endDateTime ?? item?.end ?? '';
+            const status = item?.status ?? (item?.completed ? 'COMPLETED' : 'SCHEDULED');
+
+            return `
+                <tr>
+                    <td>${title}</td>
+                    <td>${type}</td>
+                    <td>${formatDateTime(startDate)}</td>
+                    <td>${formatDateTime(endDate)}</td>
+                    <td><span class="badge text-bg-secondary">${status}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function loadCalendarRange() {
+        const params = new URLSearchParams();
+        params.set('facilityId', FACILITY_ID);
+        params.set('startDate', new Date(document.getElementById('calendarStart').value).toISOString());
+        params.set('endDate', new Date(document.getElementById('calendarEnd').value).toISOString());
+        params.set('view', document.getElementById('calendarView').value || 'agenda');
+
+        const payload = await apiFetch(`/calendar/interviews?${params.toString()}`);
+        renderCalendarRows(extractCalendarRows(payload));
+    }
+
+    async function loadCalendarUpcoming() {
+        const params = new URLSearchParams();
+        params.set('facilityId', FACILITY_ID);
+        params.set('days', '7');
+        params.set('limit', '50');
+
+        const payload = await apiFetch(`/calendar/interviews/upcoming?${params.toString()}`);
+        renderCalendarRows(extractCalendarRows(payload));
+    }
+
+    async function exportCalendar() {
+        const start = document.getElementById('calendarStart').value;
+        const end = document.getElementById('calendarEnd').value;
+        const format = document.getElementById('calendarFormat').value || 'ics';
+
+        if (!start || !end) {
+            notifyUser('warning', 'Set start and end date for export.');
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.set('facilityId', FACILITY_ID);
+        params.set('startDate', toDateOnly(start));
+        params.set('endDate', toDateOnly(end));
+        params.set('format', format);
+
+        const response = await fetch(`${ATS.API_BASE}/calendar/export?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Calendar export failed (${response.status})`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `facility-${FACILITY_ID}-calendar.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('user_info');
+        window.location.href = '/login';
+    });
+
+    document.getElementById('reloadUsersBtn').addEventListener('click', async function () {
+        clearNotifications();
+        try {
+            await loadFacilityUsers();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load facility users.');
+        }
+    });
+
+    document.getElementById('addFacilityUserForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!isAdmin) {
+            return;
+        }
+        clearNotifications();
+
+        const email = document.getElementById('facilityUserEmail').value.trim();
+        if (!email) {
+            notifyUser('warning', 'User email is required.');
+            return;
+        }
+
+        try {
+            await apiFetch(`/admin/facilities/${FACILITY_ID}/addUser`, {
+                method: 'POST',
+                body: JSON.stringify({email})
+            });
+            notifyUser('success', 'User added to facility successfully.');
+            document.getElementById('facilityUserEmail').value = '';
+            await loadFacilityUsers();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to add user to facility.');
+        }
+    });
+
+    document.getElementById('facilityUsersTableBody').addEventListener('click', async function (e) {
+        if (!isAdmin) {
+            return;
+        }
+
+        const removeBtn = e.target.closest('[data-remove-user]');
+        if (!removeBtn) {
+            return;
+        }
+
+        const userId = removeBtn.getAttribute('data-remove-user');
+        clearNotifications();
+        try {
+            await apiFetch(`/admin/facilities/${FACILITY_ID}/users/${userId}`, {
+                method: 'DELETE'
+            });
+            notifyUser('success', 'User removed from facility successfully.');
+            await loadFacilityUsers();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to remove user from facility.');
+        }
+    });
+
+    document.getElementById('applicantFilterForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearNotifications();
+        try {
+            await loadApplicants();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load applicants.');
+        }
+    });
+
+    document.getElementById('reloadApplicantsBtn').addEventListener('click', async function () {
+        clearNotifications();
+        try {
+            await loadApplicants();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load applicants.');
+        }
+    });
+
+    document.getElementById('searchApplicantsBtn').addEventListener('click', async function () {
+        clearNotifications();
+        try {
+            await searchApplicants();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Applicant search failed.');
+        }
+    });
+
+    document.getElementById('clearSearchBtn').addEventListener('click', async function () {
+        document.getElementById('searchQuery').value = '';
+        clearNotifications();
+        try {
+            await loadApplicants();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to reload applicants.');
+        }
+    });
+
+    document.getElementById('reloadStatsBtn').addEventListener('click', async function () {
+        clearNotifications();
+        try {
+            await loadApplicantStats();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load applicant stats.');
+        }
+    });
+
+    document.getElementById('applicantsTableBody').addEventListener('click', async function (e) {
+        const selectBtn = e.target.closest('[data-select-applicant]');
+        if (selectBtn) {
+            setSelectedApplicant(selectBtn.getAttribute('data-select-applicant'));
+            return;
+        }
+
+        const viewBtn = e.target.closest('[data-view-applicant]');
+        if (viewBtn) {
+            clearNotifications();
+            try {
+                const applicantId = viewBtn.getAttribute('data-view-applicant');
+                setSelectedApplicant(applicantId);
+                await showApplicantDetail(applicantId);
+            } catch (err) {
+                notifyUser('danger', err.message || 'Failed to load applicant detail.');
+            }
+        }
+    });
+
+    document.getElementById('selectAllApplicants').addEventListener('change', function (e) {
+        const checked = e.target.checked;
+        document.querySelectorAll('.applicant-select').forEach(cb => {
+            cb.checked = checked;
+        });
+    });
+
+    document.getElementById('bulkStatusBtn').addEventListener('click', async function () {
+        const applicantIds = getSelectedApplicantIds();
+        if (!applicantIds.length) {
+            notifyUser('warning', 'Select at least one applicant for bulk status update.');
+            return;
+        }
+
+        const status = document.getElementById('filterStatus').value.trim();
+        if (!status) {
+            notifyUser('warning', 'Set a status in filter field to apply bulk update.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch('/applicants/bulk/status', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    applicantIds,
+                    status,
+                    notes: document.getElementById('statusUpdateNotes').value.trim() || null
+                })
+            });
+            notifyUser('success', 'Bulk status updated successfully.');
+            await loadApplicants();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Bulk status update failed.');
+        }
+    });
+
+    document.getElementById('addApplicantForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearNotifications();
+
+        const resume = document.getElementById('newApplicantResume').files[0];
+        if (!resume) {
+            notifyUser('warning', 'Resume file is required.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('name', document.getElementById('newApplicantName').value.trim());
+        formData.append('email', document.getElementById('newApplicantEmail').value.trim());
+        formData.append('role', document.getElementById('newApplicantRole').value.trim());
+        formData.append('facilityId', FACILITY_ID);
+        formData.append('resume', resume);
+
+        const phone = document.getElementById('newApplicantPhone').value.trim();
+        const status = document.getElementById('newApplicantStatus').value.trim();
+        const notes = document.getElementById('newApplicantNotes').value.trim();
+
+        if (phone) {
+            formData.append('phoneNumber', phone);
+        }
+        if (status) {
+            formData.append('status', status);
+        }
+        if (notes) {
+            formData.append('notes', notes);
+        }
+
+        try {
+            const created = await apiFormFetch('/applicants', formData, 'POST');
+            const createdId = getApplicantId(created);
+            if (createdId) {
+                setSelectedApplicant(createdId);
+            }
+            notifyUser('success', 'Applicant created successfully.');
+            e.target.reset();
+            await loadApplicants();
+            await loadApplicantStats();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to create applicant.');
+        }
+    });
+
+    document.getElementById('viewApplicantBtn').addEventListener('click', async function () {
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await showApplicantDetail(selectedApplicantId);
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load applicant detail.');
+        }
+    });
+
+    document.getElementById('downloadResumeBtn').addEventListener('click', async function () {
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await downloadApplicantResume(selectedApplicantId);
+            notifyUser('success', 'Resume download started.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to download resume.');
+        }
+    });
+
+    document.getElementById('refreshApplicantActionsBtn').addEventListener('click', async function () {
+        clearNotifications();
+        try {
+            await loadApplicants();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to refresh applicants.');
+        }
+    });
+
+    document.getElementById('updateStatusForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        const status = document.getElementById('statusUpdateValue').value.trim();
+        if (!status) {
+            notifyUser('warning', 'Status is required.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch(`/applicants/${selectedApplicantId}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    status,
+                    notes: document.getElementById('statusUpdateNotes').value.trim() || null
+                })
+            });
+            notifyUser('success', 'Applicant status updated successfully.');
+            await loadApplicants();
+            await loadApplicantStats();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to update applicant status.');
+        }
+    });
+
+    document.getElementById('updateApplicantForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        const formData = new FormData();
+
+        const name = document.getElementById('updName').value.trim();
+        const email = document.getElementById('updEmail').value.trim();
+        const phone = document.getElementById('updPhone').value.trim();
+        const role = document.getElementById('updRole').value.trim();
+        const notes = document.getElementById('updNotes').value.trim();
+        const resume = document.getElementById('updResume').files[0];
+
+        if (name) {
+            formData.append('name', name);
+        }
+        if (email) {
+            formData.append('email', email);
+        }
+        if (phone) {
+            formData.append('phoneNumber', phone);
+        }
+        if (role) {
+            formData.append('role', role);
+        }
+        if (notes) {
+            formData.append('notes', notes);
+        }
+        if (resume) {
+            formData.append('resume', resume);
+        }
+
+        if ([...formData.keys()].length === 0) {
+            notifyUser('warning', 'Provide at least one field to update.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFormFetch(`/applicants/${selectedApplicantId}`, formData, 'PUT');
+            notifyUser('success', 'Applicant updated successfully.');
+            await loadApplicants();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to update applicant.');
+        }
+    });
+
+    document.getElementById('resendNotificationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch(`/applicants/${selectedApplicantId}/resend-notification`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    notificationType: document.getElementById('notificationType').value
+                })
+            });
+            notifyUser('success', 'Notification resent successfully.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to resend notification.');
+        }
+    });
+
+    document.getElementById('scheduleInterviewForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch(`/applicants/${selectedApplicantId}/interviews`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    scheduledDate: new Date(document.getElementById('interviewDate').value).toISOString(),
+                    durationMinutes: Number(document.getElementById('interviewDuration').value || 60),
+                    interviewType: document.getElementById('interviewType').value.trim(),
+                    notes: document.getElementById('interviewNotes').value.trim() || null,
+                    generateMeetingLink: true,
+                    sendCalendarInvites: true,
+                    sendEmailNotifications: true
+                })
+            });
+            notifyUser('success', 'Interview scheduled successfully.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to schedule interview.');
+        }
+    });
+
+    document.getElementById('completeInterviewForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        const interviewId = document.getElementById('completeInterviewId').value.trim();
+        if (!interviewId) {
+            notifyUser('warning', 'Interview ID is required.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            const newStatus = document.getElementById('completeInterviewNewStatus').value.trim();
+            const completionNotes = document.getElementById('completeInterviewNotes').value.trim() || null;
+            const beforeApplicant = await apiFetch(`/applicants/${selectedApplicantId}`);
+            const beforeStatus = (beforeApplicant && beforeApplicant.status) ? String(beforeApplicant.status) : 'UNKNOWN';
+            const payload = {
+                completed: true,
+                noShow: false,
+                notes: completionNotes
+            };
+            if (newStatus) {
+                payload.newStatus = newStatus;
+            }
+
+            await apiFetch(`/applicants/${selectedApplicantId}/interviews/${encodeURIComponent(interviewId)}/complete`, {
+                method: 'PATCH',
+                body: JSON.stringify(payload)
+            });
+
+            const afterApplicant = await apiFetch(`/applicants/${selectedApplicantId}`);
+            const afterStatus = (afterApplicant && afterApplicant.status) ? String(afterApplicant.status) : beforeStatus;
+            if (afterStatus !== beforeStatus) {
+                const existingNotes = ((afterApplicant && afterApplicant.notes) ? String(afterApplicant.notes) : '').trim();
+                const now = new Date();
+                const ts = now.getFullYear() + '-' +
+                    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(now.getDate()).padStart(2, '0') + ' ' +
+                    String(now.getHours()).padStart(2, '0') + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
+                let statusNote = `[${ts}] STATUS_CHANGE: ${beforeStatus} -> ${afterStatus}`;
+                if (completionNotes) {
+                    statusNote += ` | Note: ${completionNotes}`;
+                }
+                const mergedNotes = existingNotes ? (existingNotes + '\n' + statusNote) : statusNote;
+                await apiFetch(`/applicants/${selectedApplicantId}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                        status: afterStatus,
+                        notes: mergedNotes
+                    })
+                });
+            }
+
+            notifyUser('success', 'Interview marked complete.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to complete interview.');
+        }
+    });
+
+    document.getElementById('scheduleOrientationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        clearNotifications();
+        try {
+            const docsRaw = document.getElementById('orientationDocs').value.trim();
+            const documentsRequired = docsRaw
+                ? docsRaw.split(',').map(v => v.trim()).filter(Boolean)
+                : [];
+
+            await apiFetch(`/applicants/${selectedApplicantId}/orientation`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    scheduledDate: new Date(document.getElementById('orientationDate').value).toISOString(),
+                    durationMinutes: Number(document.getElementById('orientationDuration').value || 120),
+                    documentsRequired,
+                    generateMeetingLink: true,
+                    sendEmailNotifications: true
+                })
+            });
+            notifyUser('success', 'Orientation scheduled successfully.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to schedule orientation.');
+        }
+    });
+
+    document.getElementById('completeOrientationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!requireSelectedApplicant()) {
+            return;
+        }
+
+        const orientationId = document.getElementById('completeOrientationId').value.trim();
+        if (!orientationId) {
+            notifyUser('warning', 'Orientation ID is required.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch(`/applicants/${selectedApplicantId}/orientation/${encodeURIComponent(orientationId)}/complete`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    completed: true,
+                    noShow: false,
+                    notes: document.getElementById('completeOrientationNotes').value.trim() || null
+                })
+            });
+            notifyUser('success', 'Orientation marked complete.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to complete orientation.');
+        }
+    });
+
+    document.getElementById('loadCalendarRangeBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        clearNotifications();
+        try {
+            await loadCalendarRange();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load calendar events.');
+        }
+    });
+
+    document.getElementById('loadUpcomingCalendarBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        clearNotifications();
+        try {
+            await loadCalendarUpcoming();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load upcoming interviews.');
+        }
+    });
+
+    document.getElementById('exportCalendarBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        clearNotifications();
+        try {
+            await exportCalendar();
+            notifyUser('success', 'Calendar export started.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to export calendar.');
+        }
+    });
+
+    document.getElementById('getInterviewEventBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        const interviewId = document.getElementById('calendarInterviewId').value.trim();
+        if (!interviewId) {
+            notifyUser('warning', 'Interview ID is required.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            const eventData = await apiFetch(`/calendar/interviews/${encodeURIComponent(interviewId)}`);
+            renderCalendarRows([eventData]);
+            notifyUser('success', 'Interview event loaded.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load interview event.');
+        }
+    });
+
+    document.getElementById('regenerateMeetingLinkBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        const interviewId = document.getElementById('calendarInterviewId').value.trim();
+        if (!interviewId) {
+            notifyUser('warning', 'Interview ID is required.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch(`/calendar/meeting-link/${encodeURIComponent(interviewId)}/regenerate`, {
+                method: 'POST',
+                body: JSON.stringify({sendUpdateNotifications: true})
+            });
+            notifyUser('success', 'Meeting link regenerated.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to regenerate meeting link.');
+        }
+    });
+
+    document.getElementById('sendReminderBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        const interviewId = document.getElementById('calendarInterviewId').value.trim();
+        if (!interviewId) {
+            notifyUser('warning', 'Interview ID is required.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch(`/calendar/reminders/send-now/${encodeURIComponent(interviewId)}`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    reminderType: document.getElementById('reminderType').value
+                })
+            });
+            notifyUser('success', 'Reminder sent.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to send reminder.');
+        }
+    });
+
+    document.getElementById('availabilityForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearNotifications();
+
+        try {
+            const payload = await apiFetch('/calendar/availability/check', {
+                method: 'POST',
+                body: JSON.stringify({
+                    facilityId: Number(FACILITY_ID),
+                    startDateTime: new Date(document.getElementById('availabilityStart').value).toISOString(),
+                    endDateTime: new Date(document.getElementById('availabilityEnd').value).toISOString()
+                })
+            });
+            notifyUser('success', `Availability result: ${JSON.stringify(payload)}`);
+        } catch (err) {
+            notifyUser('danger', err.message || 'Availability check failed.');
+        }
+    });
+
+    (async function initPage() {
+        clearNotifications();
+        try {
+            const claims = parseJwt(token);
+            let storedUserInfo = {};
+            try {
+                storedUserInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+            } catch (e) {
+                storedUserInfo = {};
+            }
+
+            const roles = collectNormalizedRoles([
+                claims.role,
+                claims.roles,
+                claims.authorities,
+                claims.scope,
+                claims.scopes,
+                storedUserInfo.role,
+                storedUserInfo.roles,
+                storedUserInfo.authorities
+            ]);
+            isAdmin = hasAdminRole(roles);
+
+            document.getElementById('backToFacilityBtn').setAttribute('href', `/facilities/${encodeURIComponent(FACILITY_ID)}`);
+
+            const now = new Date();
+            const plusSeven = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            document.getElementById('calendarStart').value = toIsoLocalInput(now);
+            document.getElementById('calendarEnd').value = toIsoLocalInput(plusSeven);
+            document.getElementById('availabilityStart').value = toIsoLocalInput(now);
+            document.getElementById('availabilityEnd').value = toIsoLocalInput(plusSeven);
+
+            await resolveAdminAccess();
+            applyRoleUiState();
+
+            if (isAdmin) {
+                await loadFacilityUsers();
+            }
+            await loadApplicants();
+            await loadApplicantStats();
+            await loadCalendarUpcoming();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to initialize facility users workspace.');
+        }
+    })();
+</script>
+</body>
+</html>

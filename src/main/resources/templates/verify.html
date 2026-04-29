@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Verify Email')}"></head>
+<body style="background:var(--gray-50);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem;">
+
+<div class="card" style="width:420px;max-width:95vw;padding:2rem;">
+    <div class="mb-4">
+        <div style="width:48px;height:48px;background:#fef3c7;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--warning);margin-bottom:1rem;">
+            <i class="fas fa-envelope-open-text"></i>
+        </div>
+        <h4 class="fw-bold mb-1" style="color:var(--gray-900);">Verify Your Email</h4>
+        <p class="text-muted mb-0" style="font-size:0.875rem;">Enter the verification code sent to your email address.</p>
+    </div>
+
+        <form id="verifyForm" novalidate>
+            <div class="mb-3">
+                <label for="email" class="form-label fw-semibold">Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-envelope text-muted"></i></span>
+                    <input type="email" class="form-control" id="email" placeholder="you@example.com" required/>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="verificationCode" class="form-label fw-semibold">Verification Code</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-key text-muted"></i></span>
+                    <input type="text" class="form-control form-control-lg text-center letter-spacing-2"
+                           id="verificationCode" placeholder="Enter code" maxlength="10" required/>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="verifyBtn" style="padding:0.65rem;">
+                <span class="spinner-border spinner-border-sm d-none me-2" id="verifySpinner"></span>
+                Verify Email
+            </button>
+            <button type="button" class="btn btn-link btn-sm w-100 mt-2" id="resendBtn">
+                <i class="fas fa-redo me-1"></i>Resend verification code
+            </button>
+        </form>
+
+        <hr class="my-4"/>
+        <p class="text-center text-muted mb-0" style="font-size:0.85rem;">
+            Already verified?
+            <a href="/login" class="fw-semibold text-decoration-none" style="color:var(--primary);">Sign in</a>
+        </p>
+</div>
+
+<script th:inline="javascript">
+    function notifyUser(type, message) {
+        if (typeof window.appNotify === 'function') {
+            window.appNotify(type, message);
+        }
+    }
+
+    function clearNotifications() {
+        if (typeof window.clearAppNotifications === 'function') {
+            window.clearAppNotifications();
+        }
+    }
+
+    // Pre-fill email from query param
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('email')) {
+        document.getElementById('email').value = params.get('email');
+    }
+
+    document.getElementById('verifyForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const verificationCode = document.getElementById('verificationCode').value.trim();
+        const spinner = document.getElementById('verifySpinner');
+        const btn = document.getElementById('verifyBtn');
+
+        spinner.classList.remove('d-none');
+        btn.disabled = true;
+        clearNotifications();
+
+        try {
+            const res = await fetch(`${ATS.API_BASE}/auth/verify`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, verificationCode})
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Verification failed');
+            notifyUser('success', 'Email verified! Redirecting to login...');
+            setTimeout(() => window.location.href = '/login', 1500);
+        } catch (err) {
+            notifyUser('danger', err.message || 'Verification failed. Please check your code.');
+        } finally {
+            spinner.classList.add('d-none');
+            btn.disabled = false;
+        }
+    });
+
+    // Resend verification code
+    document.getElementById('resendBtn').addEventListener('click', async function (e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const btn = this;
+
+        if (!email) {
+            notifyUser('warning', 'Please enter your email address.');
+            return;
+        }
+
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sending...';
+
+        try {
+            const res = await fetch(`${ATS.API_BASE}/auth/resend-body`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email})
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Resend failed');
+            notifyUser('success', 'Verification code sent! Check your email.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to resend verification code.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
+</script>
+</body>
+</html>

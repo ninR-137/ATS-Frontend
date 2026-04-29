@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Applicant Profile')}"></head>
+<body class="app-body">
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div th:replace="~{fragments/sidebar :: sidebar(page='applicants')}"></div>
+<div class="app-main">
+  <header class="app-topbar">
+    <button id="sidebarToggle" class="topbar-icon-btn mobile-toggle me-2"><i class="fas fa-bars"></i></button>
+    <div class="topbar-breadcrumb">
+      <p class="topbar-title">Applicant Profile</p>
+      <p class="topbar-subtitle" id="profileSubtitle">Loading applicant...</p>
+    </div>
+    <div class="topbar-actions d-flex gap-2">
+      <a href="/applicants" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i>Back</a>
+      <button id="toggleApplicantArchiveBtn" class="btn btn-outline-danger btn-sm"><i class="fas fa-box-archive me-1"></i>Archive Applicant</button>
+      <button id="saveDetailsBtnTop" class="btn btn-primary btn-sm"><i class="fas fa-floppy-disk me-1"></i>Save Details</button>
+    </div>
+  </header>
+
+  <main class="app-content">
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-semibold">Details</h6>
+          </div>
+          <div class="card-body">
+            <form id="detailsForm" class="row g-3" novalidate>
+              <div class="col-md-6">
+                <label for="detailName" class="form-label">Name</label>
+                <input id="detailName" type="text" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label for="detailEmail" class="form-label">Email</label>
+                <input id="detailEmail" type="email" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label for="detailPhone" class="form-label">Phone</label>
+                <input id="detailPhone" type="text" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <label for="detailRole" class="form-label">Role</label>
+                <input id="detailRole" type="text" class="form-control" />
+              </div>
+              <div class="col-12">
+                <label for="detailNotesHistory" class="form-label">Notes History (append-only via status updates)</label>
+                <textarea id="detailNotesHistory" class="form-control" rows="6" readonly></textarea>
+              </div>
+              <div class="col-12 d-flex justify-content-end">
+                <button id="saveDetailsBtn" type="submit" class="btn btn-primary btn-sm"><i class="fas fa-floppy-disk me-1"></i>Save Details</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="card mt-3">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-semibold">Interview &amp; Orientation</h6>
+          </div>
+          <div class="card-body d-grid gap-2">
+            <button id="openScheduleModalBtn" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleInterviewModal"><i class="fas fa-calendar-plus me-1"></i>Schedule Interview</button>
+            <button id="openScheduleOrientationModalBtn" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleOrientationModal"><i class="fas fa-clipboard-list me-1"></i>Schedule Orientation</button>
+            <hr class="my-2"/>
+            <div id="scheduledInterviewsBody" class="small text-muted">Loading events...</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card mb-3">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-semibold">Status</h6>
+          </div>
+          <div class="card-body">
+            <div id="archivedApplicantAlert" class="alert alert-warning small py-2 px-3 d-none">
+              This applicant is archived. Recover them to resume editing, scheduling, or status changes.
+            </div>
+            <div class="mb-3 d-flex align-items-center justify-content-between">
+              <span class="text-muted small">Current Status</span>
+              <span id="currentStatusBadge"></span>
+            </div>
+            <div class="mb-2">
+              <label for="statusSelect" class="form-label">New Status</label>
+              <select id="statusSelect" class="form-select form-select-sm">
+                <option value="">Select status...</option>
+                <option value="INVITING_FOR_INTERVIEW">Inviting</option>
+                <option value="INTERVIEW_COMPLETED">Interviewed</option>
+                <option value="HIRED">Hired</option>
+                <option value="NOT_QUALIFIED">Not Qualified</option>
+                <option value="NOT_INTERESTED">Not Interested</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="statusNotes" class="form-label">Status Notes (optional)</label>
+              <textarea id="statusNotes" class="form-control form-control-sm" rows="2"></textarea>
+            </div>
+            <button id="updateStatusBtn" class="btn btn-outline-primary btn-sm w-100"><i class="fas fa-arrows-rotate me-1"></i>Update Status</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-semibold">Documents</h6>
+          </div>
+          <div class="card-body d-grid gap-2">
+            <div>
+              <label for="detailResume" class="form-label">Replace Resume (optional)</label>
+              <input id="detailResume" type="file" class="form-control" />
+            </div>
+            <button id="downloadResumeBtn" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-2"></i>Download Resume</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal fade" id="scheduleInterviewModal" tabindex="-1" aria-labelledby="scheduleInterviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="scheduleInterviewModalLabel"><i class="fas fa-calendar-plus me-2"></i>Schedule Interview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="scheduleInterviewForm" novalidate>
+          <div class="mb-3">
+            <label for="ivScheduledDate" class="form-label">Date and Time <span class="text-danger">*</span></label>
+            <input type="datetime-local" id="ivScheduledDate" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label for="ivDuration" class="form-label">Duration (minutes)</label>
+            <input type="number" id="ivDuration" class="form-control" value="60" min="15" max="480" />
+          </div>
+          <div class="mb-3">
+            <label for="ivType" class="form-label">Interview Type <span class="text-danger">*</span></label>
+            <select id="ivType" class="form-select" required>
+              <option value="">Select type...</option>
+              <option value="phone">Phone</option>
+              <option value="video">Video</option>
+              <option value="in-person">In-person</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="ivNotes" class="form-label">Notes</label>
+            <textarea id="ivNotes" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-1">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="ivGenerateLink" checked />
+              <label class="form-check-label" for="ivGenerateLink">Generate Meeting Link</label>
+            </div>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="ivSendCalendar" checked />
+              <label class="form-check-label" for="ivSendCalendar">Send Calendar Invites</label>
+            </div>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="ivSendEmail" checked />
+              <label class="form-check-label" for="ivSendEmail">Send Email Notifications</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="scheduleInterviewSubmitBtn" class="btn btn-success"><i class="fas fa-calendar-check me-1"></i>Schedule</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="scheduleOrientationModal" tabindex="-1" aria-labelledby="scheduleOrientationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="scheduleOrientationModalLabel"><i class="fas fa-clipboard-list me-2"></i>Schedule Orientation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="scheduleOrientationForm" novalidate>
+          <div class="mb-3">
+            <label for="orientationScheduledDate" class="form-label">Date and Time <span class="text-danger">*</span></label>
+            <input type="datetime-local" id="orientationScheduledDate" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label for="orientationDuration" class="form-label">Duration (minutes)</label>
+            <input type="number" id="orientationDuration" class="form-control" value="120" min="15" max="480" />
+          </div>
+          <div class="mb-3">
+            <label for="orientationDocuments" class="form-label">Documents Required</label>
+            <input type="text" id="orientationDocuments" class="form-control" placeholder="ID, certification, handbook acknowledgement" />
+            <div class="form-text">Separate multiple documents with commas.</div>
+          </div>
+          <div class="mb-1">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="orientationGenerateLink" checked />
+              <label class="form-check-label" for="orientationGenerateLink">Generate Meeting Link</label>
+            </div>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="orientationSendEmail" checked />
+              <label class="form-check-label" for="orientationSendEmail">Send Email Notifications</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="scheduleOrientationSubmitBtn" class="btn btn-primary"><i class="fas fa-clipboard-check me-1"></i>Schedule</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  ATS.initPage();
+
+  var applicantId = /*[[${applicantId}]]*/ '';
+  var applicantLoaded = null;
+
+  function getArchivedApplicantRegistry() {
+    try {
+      return JSON.parse(localStorage.getItem('ats_archived_applicants') || '[]');
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function setArchivedApplicantRegistry(entries) {
+    localStorage.setItem('ats_archived_applicants', JSON.stringify(entries || []));
+  }
+
+  function rememberArchivedApplicant(entry) {
+    var items = getArchivedApplicantRegistry().filter(function(item) {
+      return String(item.id) !== String(entry.id);
+    });
+    items.unshift(entry);
+    setArchivedApplicantRegistry(items);
+  }
+
+  function forgetArchivedApplicant(id) {
+    setArchivedApplicantRegistry(getArchivedApplicantRegistry().filter(function(item) {
+      return String(item.id) !== String(id);
+    }));
+  }
+
+  function sanitizeText(v) {
+    return v == null ? '' : String(v);
+  }
+
+  function setCurrentStatus(status) {
+    document.getElementById('currentStatusBadge').innerHTML = ATS.statusBadgeHtml(status || 'PENDING');
+  }
+
+  function fillDetailsForm(a) {
+    document.getElementById('detailName').value = sanitizeText(a.name || a.fullName || a.applicantName);
+    document.getElementById('detailEmail').value = sanitizeText(a.email);
+    document.getElementById('detailPhone').value = sanitizeText(a.phoneNumber || a.phone);
+    document.getElementById('detailRole').value = sanitizeText(a.role || a.position);
+    document.getElementById('detailNotesHistory').value = sanitizeText(a.notes);
+  }
+
+  function isApplicantArchived(applicant) {
+    return !!(applicant && (applicant.archived === true || applicant.deleted === true || applicant.deletedAt || applicant.archivedAt));
+  }
+
+  function syncApplicantArchiveUi() {
+    var archived = isApplicantArchived(applicantLoaded);
+    var archiveBtn = document.getElementById('toggleApplicantArchiveBtn');
+    var archivedAlert = document.getElementById('archivedApplicantAlert');
+    var disableIds = [
+      'saveDetailsBtnTop',
+      'saveDetailsBtn',
+      'updateStatusBtn',
+      'openScheduleModalBtn',
+      'openScheduleOrientationModalBtn'
+    ];
+
+    if (archiveBtn) {
+      archiveBtn.className = archived ? 'btn btn-success btn-sm' : 'btn btn-outline-danger btn-sm';
+      archiveBtn.innerHTML = archived
+        ? '<i class="fas fa-rotate-left me-1"></i>Recover Applicant'
+        : '<i class="fas fa-box-archive me-1"></i>Archive Applicant';
+    }
+
+    if (archivedAlert) {
+      archivedAlert.classList.toggle('d-none', !archived);
+    }
+
+    disableIds.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.disabled = archived;
+      }
+    });
+  }
+
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function formatLocalTimestamp(date) {
+    return date.getFullYear() + '-' +
+      pad2(date.getMonth() + 1) + '-' +
+      pad2(date.getDate()) + ' ' +
+      pad2(date.getHours()) + ':' +
+      pad2(date.getMinutes()) + ':' +
+      pad2(date.getSeconds());
+  }
+
+  function buildStatusNoteEntry(oldStatus, newStatus, note) {
+    var entry = '[' + formatLocalTimestamp(new Date()) + '] STATUS_CHANGE: ' + oldStatus + ' -> ' + newStatus;
+    if (note) {
+      entry += ' | Note: ' + note;
+    }
+    return entry;
+  }
+
+  function normalizeDateTimeLocalInput(value) {
+    if (!value) return value;
+    return value.length === 16 ? (value + ':00') : value;
+  }
+
+  function getApplicantFacilityId() {
+    if (!applicantLoaded) return '';
+    return applicantLoaded.facilityId || (applicantLoaded.facility && applicantLoaded.facility.id) || '';
+  }
+
+  function buildActivityNoteEntry(activity, details) {
+    var now = new Date();
+    var ts = now.getFullYear() + '-' +
+      pad2(now.getMonth() + 1) + '-' +
+      pad2(now.getDate()) + ' ' +
+      pad2(now.getHours()) + ':' +
+      pad2(now.getMinutes()) + ':' +
+      pad2(now.getSeconds());
+    return '[' + ts + '] ' + activity + (details ? ': ' + details : '');
+  }
+
+  async function appendApplicantActivityNote(entryText) {
+    var existingNotes = sanitizeText((applicantLoaded && applicantLoaded.notes) || '').trim();
+    var appendedNotes = existingNotes ? (existingNotes + '\n' + entryText) : entryText;
+    var fd = new FormData();
+    fd.append('notes', appendedNotes);
+    var token = ATS.getToken();
+    var resp = await fetch(ATS.API_BASE + '/applicants/' + applicantId, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: fd
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var updated = null;
+    try {
+      updated = await resp.json();
+    } catch (e) {
+      updated = null;
+    }
+    applicantLoaded = updated || applicantLoaded;
+    if (updated && updated.notes !== undefined) {
+      document.getElementById('detailNotesHistory').value = sanitizeText(updated.notes);
+    } else {
+      document.getElementById('detailNotesHistory').value = appendedNotes;
+    }
+    setCurrentStatus((updated && updated.status) || (applicantLoaded && applicantLoaded.status));
+  }
+
+  async function loadScheduledInterviews() {
+    var box = document.getElementById('scheduledInterviewsBody');
+    var facilityId = getApplicantFacilityId();
+    try {
+      var profileName = sanitizeText(applicantLoaded && (applicantLoaded.name || applicantLoaded.fullName || applicantLoaded.applicantName)).trim().toLowerCase();
+      var profileEmail = sanitizeText(applicantLoaded && applicantLoaded.email).trim().toLowerCase();
+
+      function normalizeRows(data) {
+        return Array.isArray(data) ? data : ((data && (data.interviews || data.events || data.items || data.content)) || []);
+      }
+
+      function hasNoShowStatus(status, row) {
+        var statusUpper = sanitizeText(status).toUpperCase();
+        return row.noShow === true || statusUpper.indexOf('NO_SHOW') !== -1 || statusUpper.indexOf('NO-SHOW') !== -1;
+      }
+
+      function isMine(iv) {
+        var id = iv.applicantId || (iv.applicant && iv.applicant.id) || (iv.applicant && iv.applicant.applicantId);
+        if (String(id) === String(applicantId)) {
+          return true;
+        }
+        var name = sanitizeText(iv.applicantName || (iv.applicant && iv.applicant.name) || iv.name).trim().toLowerCase();
+        var email = sanitizeText(iv.applicantEmail || (iv.applicant && iv.applicant.email)).trim().toLowerCase();
+        if (profileEmail && email && profileEmail === email) {
+          return true;
+        }
+        if (profileName && name && profileName === name) {
+          return true;
+        }
+        return false;
+      }
+
+      async function fetchCalendarRows(basePath) {
+        var upcomingParams = new URLSearchParams({ days: '365', limit: '200' });
+        if (facilityId) {
+          upcomingParams.set('facilityId', String(facilityId));
+        }
+        var upcomingData = await ATS.apiFetch(basePath + '/upcoming?' + upcomingParams);
+        var upcomingRows = normalizeRows(upcomingData).filter(isMine);
+
+        var now = new Date();
+        var start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate(), 0, 0, 0);
+        var end = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate(), 23, 59, 59);
+        var startStr = start.getFullYear() + '-' + pad2(start.getMonth() + 1) + '-' + pad2(start.getDate()) + 'T' + pad2(start.getHours()) + ':' + pad2(start.getMinutes()) + ':' + pad2(start.getSeconds());
+        var endStr = end.getFullYear() + '-' + pad2(end.getMonth() + 1) + '-' + pad2(end.getDate()) + 'T' + pad2(end.getHours()) + ':' + pad2(end.getMinutes()) + ':' + pad2(end.getSeconds());
+        var rangeParams = new URLSearchParams({ startDate: startStr, endDate: endStr });
+        if (facilityId) {
+          rangeParams.set('facilityId', String(facilityId));
+        }
+        var rangeData = await ATS.apiFetch(basePath + '?' + rangeParams);
+        var rangeRows = normalizeRows(rangeData).filter(isMine);
+
+        return upcomingRows.concat(rangeRows);
+      }
+
+      function normalizeEventRows(rows, kind) {
+        return rows.map(function(row) {
+          var status = row.status || (kind === 'orientation' ? 'ORIENTATION_SCHEDULED' : 'SCHEDULED');
+          return {
+            kind: kind,
+            id: row.id || row.interviewId || row.orientationId || '',
+            dt: row.scheduledDate || row.startDate || row.start || '',
+            type: kind === 'orientation' ? 'orientation' : (row.interviewType || row.type || 'interview'),
+            status: status,
+            noShow: hasNoShowStatus(status, row),
+            raw: row
+          };
+        });
+      }
+
+      var interviewRows = await fetchCalendarRows('/calendar/interviews');
+      var orientationRows = await fetchCalendarRows('/calendar/orientations');
+      var mine = normalizeEventRows(interviewRows, 'interview').concat(normalizeEventRows(orientationRows, 'orientation'));
+
+      var dedup = {};
+      mine.forEach(function(item) {
+        var key = item.kind + ':' + String(item.id || '') + ':' + String(item.dt || '');
+        dedup[key] = item;
+      });
+      mine = Object.values(dedup).sort(function(a, b) {
+        return new Date(a.dt || 0) - new Date(b.dt || 0);
+      });
+
+      if (!mine.length) {
+        box.innerHTML = '<div class="text-muted">No interview or orientation records found.</div>';
+        return;
+      }
+
+      box.innerHTML = mine.map(function(item) {
+        var itemId = item.id;
+        var dt = item.dt;
+        var status = item.status;
+        var type = item.type;
+        var kindLabel = item.kind === 'orientation' ? 'Orientation' : 'Interview';
+        var statusUpper = status.toString().toUpperCase();
+        var isCompleted = statusUpper.indexOf('COMPLET') !== -1;
+        var isNoShow = item.noShow;
+        var isCanceled = statusUpper.indexOf('CANCEL') !== -1;
+        var canComplete = !isCompleted && !isNoShow && !isCanceled;
+        var canNoShow = !isCompleted && !isNoShow && !isCanceled;
+        return '<div class="border rounded p-2 mb-2">' +
+          '<div class="fw-semibold">' + ATS.formatDateTime(dt) + '</div>' +
+          '<div class="text-muted" style="font-size:.8rem;">' + kindLabel + ' - ' + type + '</div>' +
+          '<div class="mt-1">' + ATS.statusBadgeHtml(status) + '</div>' +
+          ((canComplete || canNoShow) && itemId ? '<div class="d-flex gap-2 mt-2">' : '') +
+          (canComplete && itemId ? '<button class="btn btn-outline-success btn-sm" data-complete-event-kind="' + item.kind + '" data-complete-event-id="' + itemId + '" data-complete-event-date="' + dt + '" data-complete-event-type="' + type + '"><i class="fas fa-check me-1"></i>Mark Completed</button>' : '') +
+          (canNoShow && itemId ? '<button class="btn btn-outline-danger btn-sm" data-noshow-event-kind="' + item.kind + '" data-noshow-event-id="' + itemId + '" data-noshow-event-date="' + dt + '" data-noshow-event-type="' + type + '"><i class="fas fa-user-slash me-1"></i>Mark No Show</button>' : '') +
+          ((canComplete || canNoShow) && itemId ? '</div>' : '') +
+          '</div>';
+      }).join('');
+    } catch (err) {
+      box.innerHTML = '<div class="text-danger">Failed to load interview and orientation records</div>';
+    }
+  }
+
+  async function loadApplicantProfile() {
+    try {
+      var a = await ATS.apiFetch('/applicants/' + applicantId);
+      applicantLoaded = a;
+      var name = a.name || a.fullName || a.applicantName || 'Applicant';
+      var facility = (a.facility && a.facility.name) || a.facilityName || '-';
+
+      document.getElementById('profileSubtitle').textContent = name;
+      setCurrentStatus(a.status);
+      fillDetailsForm(a);
+      document.getElementById('detailRole').placeholder = 'Facility: ' + facility;
+      syncApplicantArchiveUi();
+      await loadScheduledInterviews();
+    } catch (err) {
+      document.getElementById('profileSubtitle').textContent = 'Failed to load applicant';
+      ATS.notify('error', err.message || 'Failed to load applicant profile');
+    }
+  }
+
+  document.getElementById('toggleApplicantArchiveBtn').addEventListener('click', async function() {
+    if (!applicantLoaded) return;
+
+    var archived = isApplicantArchived(applicantLoaded);
+    var message = archived ? 'Recover this applicant?' : 'Archive this applicant?';
+    var confirmedArchiveAction = await ATS.confirm(message, {
+      title: archived ? 'Recover Applicant' : 'Archive Applicant',
+      confirmText: archived ? 'Recover' : 'Archive'
+    });
+    if (!confirmedArchiveAction) {
+      return;
+    }
+
+    var btn = this;
+    btn.disabled = true;
+    ATS.setBlockingBusy(true, archived
+      ? 'Recovering applicant. Please do not refresh or navigate away.'
+      : 'Archiving applicant. Please do not refresh or navigate away.');
+
+    try {
+      if (archived) {
+        var recovered = await ATS.apiFetch('/applicants/' + applicantId + '/recover', { method: 'POST' });
+        applicantLoaded.archived = false;
+        applicantLoaded.archivedAt = null;
+        applicantLoaded.deletedAt = null;
+        applicantLoaded.recoveredAt = recovered && recovered.recoveredAt;
+        forgetArchivedApplicant(applicantId);
+        ATS.notify('success', (recovered && recovered.message) || 'Applicant recovered successfully');
+        await loadApplicantProfile();
+      } else {
+        var deleted = await ATS.apiFetch('/applicants/' + applicantId, { method: 'DELETE' });
+        applicantLoaded.archived = true;
+        applicantLoaded.archivedAt = (deleted && deleted.archivedAt) || new Date().toISOString();
+        applicantLoaded.deletedAt = applicantLoaded.archivedAt;
+        rememberArchivedApplicant({
+          id: applicantId,
+          name: applicantLoaded.name || applicantLoaded.fullName || applicantLoaded.applicantName || 'Applicant',
+          email: applicantLoaded.email || '',
+          role: applicantLoaded.role || applicantLoaded.position || '',
+          facilityName: (applicantLoaded.facility && applicantLoaded.facility.name) || applicantLoaded.facilityName || '',
+          archivedAt: applicantLoaded.archivedAt
+        });
+        syncApplicantArchiveUi();
+        ATS.notify('success', (deleted && deleted.message) || 'Applicant archived successfully');
+      }
+    } catch (err) {
+      ATS.notify('error', err.message || (archived ? 'Failed to recover applicant' : 'Failed to archive applicant'));
+    } finally {
+      ATS.setBlockingBusy(false);
+      btn.disabled = false;
+      syncApplicantArchiveUi();
+    }
+  });
+
+  async function saveDetails() {
+    var fd = new FormData();
+    var name = document.getElementById('detailName').value.trim();
+    var email = document.getElementById('detailEmail').value.trim();
+    var phone = document.getElementById('detailPhone').value.trim();
+    var role = document.getElementById('detailRole').value.trim();
+    var resume = document.getElementById('detailResume').files[0];
+
+    if (name) fd.append('name', name);
+    if (email) fd.append('email', email);
+    if (phone) fd.append('phoneNumber', phone);
+    if (role) fd.append('role', role);
+    if (resume) fd.append('resume', resume);
+
+    var token = ATS.getToken();
+    var resp = await fetch(ATS.API_BASE + '/applicants/' + applicantId, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: fd
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  }
+
+  document.getElementById('detailsForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var btn = document.getElementById('saveDetailsBtn');
+    btn.disabled = true;
+    try {
+      await saveDetails();
+      ATS.notify('success', 'Applicant details updated');
+      await loadApplicantProfile();
+      document.getElementById('detailResume').value = '';
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to update details');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('saveDetailsBtnTop').addEventListener('click', function(){
+    document.getElementById('detailsForm').requestSubmit();
+  });
+
+  document.getElementById('updateStatusBtn').addEventListener('click', async function(){
+    var status = document.getElementById('statusSelect').value;
+    var notes = document.getElementById('statusNotes').value.trim();
+    if (!status) {
+      ATS.notify('warning', 'Please select a status');
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    try {
+      var oldStatus = sanitizeText((applicantLoaded && applicantLoaded.status) || 'UNKNOWN');
+      var existingNotes = sanitizeText((applicantLoaded && applicantLoaded.notes) || '').trim();
+      var statusEntry = buildStatusNoteEntry(oldStatus, status, notes);
+      var appendedNotes = existingNotes ? (existingNotes + '\n' + statusEntry) : statusEntry;
+      var payload = { status: status, notes: appendedNotes };
+      var updated = await ATS.apiFetch('/applicants/' + applicantId + '/status', {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      });
+      applicantLoaded = updated || applicantLoaded;
+      setCurrentStatus(updated.status || status);
+      if (updated && updated.notes !== undefined) {
+        document.getElementById('detailNotesHistory').value = sanitizeText(updated.notes);
+      } else {
+        document.getElementById('detailNotesHistory').value = appendedNotes;
+      }
+      document.getElementById('statusSelect').value = '';
+      document.getElementById('statusNotes').value = '';
+      ATS.notify('success', 'Status updated');
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to update status');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('scheduleInterviewSubmitBtn').addEventListener('click', async function() {
+    var form = document.getElementById('scheduleInterviewForm');
+    if (!form.reportValidity()) return;
+
+    var payload = {
+      scheduledDate: normalizeDateTimeLocalInput(document.getElementById('ivScheduledDate').value),
+      durationMinutes: parseInt(document.getElementById('ivDuration').value, 10) || 60,
+      interviewType: document.getElementById('ivType').value,
+      notes: document.getElementById('ivNotes').value.trim() || null,
+      generateMeetingLink: document.getElementById('ivGenerateLink').checked,
+      sendCalendarInvites: document.getElementById('ivSendCalendar').checked,
+      sendEmailNotifications: document.getElementById('ivSendEmail').checked
+    };
+
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scheduling...';
+    ATS.setBlockingBusy(true, 'Scheduling interview and updating notes. Please do not refresh or navigate away.');
+    try {
+      var created = await ATS.apiFetch('/applicants/' + applicantId + '/interviews', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      await loadApplicantProfile();
+      var createdDate = (created && (created.scheduledDate || created.startDate || created.start)) || payload.scheduledDate;
+      var createdType = (created && (created.interviewType || created.type)) || payload.interviewType;
+      await appendApplicantActivityNote(
+        buildActivityNoteEntry('INTERVIEW_SCHEDULED', ATS.formatDateTime(createdDate) + ' (' + createdType + ')')
+      );
+      ATS.notify('success', 'Interview scheduled');
+      bootstrap.Modal.getInstance(document.getElementById('scheduleInterviewModal')).hide();
+      form.reset();
+      document.getElementById('ivDuration').value = '60';
+      document.getElementById('ivGenerateLink').checked = true;
+      document.getElementById('ivSendCalendar').checked = true;
+      document.getElementById('ivSendEmail').checked = true;
+      await loadScheduledInterviews();
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to schedule interview');
+    } finally {
+      ATS.setBlockingBusy(false);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-calendar-check me-1"></i>Schedule';
+    }
+  });
+
+  document.getElementById('scheduleOrientationSubmitBtn').addEventListener('click', async function() {
+    var form = document.getElementById('scheduleOrientationForm');
+    if (!form.reportValidity()) return;
+
+    var docsRaw = document.getElementById('orientationDocuments').value.trim();
+    var documentsRequired = docsRaw
+      ? docsRaw.split(',').map(function(value) { return value.trim(); }).filter(Boolean)
+      : [];
+    var payload = {
+      scheduledDate: normalizeDateTimeLocalInput(document.getElementById('orientationScheduledDate').value),
+      durationMinutes: parseInt(document.getElementById('orientationDuration').value, 10) || 120,
+      documentsRequired: documentsRequired,
+      generateMeetingLink: document.getElementById('orientationGenerateLink').checked,
+      sendEmailNotifications: document.getElementById('orientationSendEmail').checked
+    };
+
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scheduling...';
+    ATS.setBlockingBusy(true, 'Scheduling orientation and updating notes. Please do not refresh or navigate away.');
+    try {
+      var created = await ATS.apiFetch('/applicants/' + applicantId + '/orientation', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      await loadApplicantProfile();
+      var createdDate = (created && (created.scheduledDate || created.startDate || created.start)) || payload.scheduledDate;
+      await appendApplicantActivityNote(
+        buildActivityNoteEntry('ORIENTATION_SCHEDULED', ATS.formatDateTime(createdDate))
+      );
+      ATS.notify('success', 'Orientation scheduled');
+      bootstrap.Modal.getInstance(document.getElementById('scheduleOrientationModal')).hide();
+      form.reset();
+      document.getElementById('orientationDuration').value = '120';
+      document.getElementById('orientationGenerateLink').checked = true;
+      document.getElementById('orientationSendEmail').checked = true;
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to schedule orientation');
+    } finally {
+      ATS.setBlockingBusy(false);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-clipboard-check me-1"></i>Schedule';
+    }
+  });
+
+  document.getElementById('scheduledInterviewsBody').addEventListener('click', async function(e) {
+    var completeBtn = e.target.closest('[data-complete-event-id]');
+    if (completeBtn) {
+      var completeEventKind = completeBtn.getAttribute('data-complete-event-kind') || 'interview';
+      var completeEventId = completeBtn.getAttribute('data-complete-event-id');
+      var completeEventDate = completeBtn.getAttribute('data-complete-event-date') || '';
+      var completeEventType = completeBtn.getAttribute('data-complete-event-type') || completeEventKind;
+      var isInterviewComplete = completeEventKind === 'interview';
+
+      var confirmedComplete = await ATS.confirm('Mark this ' + completeEventKind + ' as completed?', {
+        title: 'Complete ' + completeEventKind,
+        confirmText: 'Mark Completed'
+      });
+      if (!confirmedComplete) {
+        return;
+      }
+
+      completeBtn.disabled = true;
+      ATS.setBlockingBusy(true, 'Finalizing completion and appending notes. Please do not refresh or navigate away.');
+      try {
+        var oldStatusComplete = sanitizeText((applicantLoaded && applicantLoaded.status) || 'UNKNOWN');
+        var completeEntry = buildActivityNoteEntry(
+          isInterviewComplete ? 'INTERVIEW_COMPLETED' : 'ORIENTATION_COMPLETED',
+          ATS.formatDateTime(completeEventDate) + ' (' + completeEventType + ')'
+        );
+        var completePath = isInterviewComplete
+          ? ('/applicants/' + applicantId + '/interviews/' + completeEventId + '/complete')
+          : ('/applicants/' + applicantId + '/orientation/' + completeEventId + '/complete');
+        var completeBody = {
+          completed: true,
+          noShow: false,
+          notes: completeEntry
+        };
+        if (isInterviewComplete) {
+          completeBody.newStatus = 'INTERVIEW_COMPLETED';
+        }
+        await ATS.apiFetch(completePath, {
+          method: 'PATCH',
+          body: JSON.stringify(completeBody)
+        });
+        await loadApplicantProfile();
+        await appendApplicantActivityNote(completeEntry);
+        if (isInterviewComplete) {
+          var statusCompleteEntry = buildStatusNoteEntry(oldStatusComplete, 'INTERVIEW_COMPLETED', 'Interview marked completed');
+          await appendApplicantActivityNote(statusCompleteEntry);
+        }
+        ATS.notify('success', (isInterviewComplete ? 'Interview' : 'Orientation') + ' marked completed');
+        await loadScheduledInterviews();
+      } catch (err) {
+        ATS.notify('error', err.message || 'Failed to mark item completed');
+      } finally {
+        ATS.setBlockingBusy(false);
+        completeBtn.disabled = false;
+      }
+      return;
+    }
+
+    var btn = e.target.closest('[data-noshow-event-id]');
+    if (!btn) return;
+    var eventKind = btn.getAttribute('data-noshow-event-kind') || 'interview';
+    var eventId = btn.getAttribute('data-noshow-event-id');
+    var eventDate = btn.getAttribute('data-noshow-event-date') || '';
+    var eventType = btn.getAttribute('data-noshow-event-type') || eventKind;
+    var isInterview = eventKind === 'interview';
+
+    var confirmedNoShow = await ATS.confirm('Mark this ' + eventKind + ' as no-show?', {
+      title: 'Mark No-Show',
+      confirmText: 'Mark No-Show'
+    });
+    if (!confirmedNoShow) {
+      return;
+    }
+
+    btn.disabled = true;
+    ATS.setBlockingBusy(true, 'Marking no-show and appending notes. Please do not refresh or navigate away.');
+    try {
+      var oldStatus = sanitizeText((applicantLoaded && applicantLoaded.status) || 'UNKNOWN');
+      var cancelEntry = buildActivityNoteEntry(
+        isInterview ? 'INTERVIEW_NO_SHOW' : 'ORIENTATION_NO_SHOW',
+        ATS.formatDateTime(eventDate) + ' (' + eventType + ')'
+      );
+      var noShowPath = isInterview
+        ? ('/applicants/' + applicantId + '/interviews/' + eventId + '/complete')
+        : ('/applicants/' + applicantId + '/orientation/' + eventId + '/complete');
+      var noShowBody = {
+        completed: false,
+        noShow: true,
+        notes: cancelEntry
+      };
+      if (isInterview) {
+        noShowBody.newStatus = 'INVITING_FOR_INTERVIEW';
+      }
+      await ATS.apiFetch(noShowPath, {
+        method: 'PATCH',
+        body: JSON.stringify(noShowBody)
+      });
+      await loadApplicantProfile();
+      await appendApplicantActivityNote(cancelEntry);
+      if (isInterview) {
+        var statusChangeEntry = buildStatusNoteEntry(oldStatus, 'INVITING_FOR_INTERVIEW', 'Interview marked as no-show');
+        await appendApplicantActivityNote(statusChangeEntry);
+      }
+      ATS.notify('success', (isInterview ? 'Interview' : 'Orientation') + ' marked no-show');
+      await loadScheduledInterviews();
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to mark no-show');
+    } finally {
+      ATS.setBlockingBusy(false);
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('downloadResumeBtn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = 'Downloading...';
+    try {
+      var token = ATS.getToken();
+      var resp = await fetch(ATS.API_BASE + '/applicants/' + applicantId + '/resume', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var blob = await resp.blob();
+      var url = URL.createObjectURL(blob);
+      var anchor = document.createElement('a');
+      anchor.href = url;
+      var disp = resp.headers.get('content-disposition') || '';
+      var match = disp.match(/filename[^;=\n]*=(['\"]?)([^'\"\n;]+)\1/);
+      anchor.download = match ? match[2] : 'resume';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      ATS.notify('error', err.message || 'Failed to download resume');
+    } finally {
+      this.disabled = false;
+      this.innerHTML = '<i class="fas fa-file-pdf me-2"></i>Download Resume';
+    }
+  });
+
+  loadApplicantProfile();
+  /*]]>*/
+</script>
+</body>
+</html>

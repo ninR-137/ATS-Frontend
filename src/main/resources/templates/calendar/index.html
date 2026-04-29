@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Calendar')}">
+  <!-- FullCalendar is loaded below via inline script to keep head fragment clean -->
+</head>
+<body class="app-body">
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div th:replace="~{fragments/sidebar :: sidebar(page='calendar')}"></div>
+<div class="app-main">
+  <header class="app-topbar">
+    <button id="sidebarToggle" class="topbar-icon-btn mobile-toggle me-2"><i class="fas fa-bars"></i></button>
+    <div class="topbar-breadcrumb">
+      <p class="topbar-title">Recruitment Calendar</p>
+      <p class="topbar-subtitle">Interviews and orientations by schedule status</p>
+    </div>
+    <div class="topbar-actions">
+      <div class="input-group input-group-sm" style="min-width:230px;max-width:280px;">
+        <span class="input-group-text bg-white"><i class="fas fa-building"></i></span>
+        <select id="calendarFacilitySelect" class="form-select form-select-sm" title="Select facility context">
+          <option value="">Loading facilities...</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+        <i class="fas fa-plus me-1"></i>Schedule Interview
+      </button>
+    </div>
+  </header>
+
+  <main class="app-content">
+    <div class="row g-3">
+      <!-- Calendar panel -->
+      <div class="col-lg-9">
+        <div class="card" style="min-height:600px;">
+          <div class="card-body p-3">
+            <div id="mainCalendar"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Sidebar panel -->
+      <div class="col-lg-3 d-flex flex-column gap-3">
+        <div class="card">
+          <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold">Upcoming (7 days)</h6>
+            <span class="badge bg-primary" id="upcomingCount">0</span>
+          </div>
+          <div class="card-body p-0">
+            <div id="upcomingList" style="max-height:260px;overflow-y:auto;">
+              <div class="p-3 text-muted text-center small">Loading...</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-semibold">Legend</h6>
+          </div>
+          <div class="card-body d-flex flex-column gap-2" style="font-size:.85rem;">
+            <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:50%;background:#178ec3;display:inline-block;"></span>Interview</div>
+            <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:50%;background:#0f5f82;display:inline-block;"></span>Interview Completed</div>
+            <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:50%;background:#3bb2e7;display:inline-block;"></span>Orientation</div>
+            <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:50%;background:#072f41;display:inline-block;"></span>Orientation Completed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Event Detail Modal -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalTitle">Interview Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="eventModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Interview Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Schedule Interview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-medium">Applicant <span class="text-danger">*</span></label>
+          <select id="schedApplicantId" class="form-select">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Date &amp; Time <span class="text-danger">*</span></label>
+          <input id="schedDateTime" type="datetime-local" class="form-control"/>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Interview Type</label>
+          <select id="schedType" class="form-select">
+            <option value="phone">Phone</option>
+            <option value="video">Video</option>
+            <option value="in-person">In-person</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-medium">Notes</label>
+          <textarea id="schedNotes" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="schedSubmitBtn">
+          <i class="fas fa-calendar-plus me-1"></i>Schedule
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FullCalendar -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    ATS.initPage();
+
+    var calendar;
+  var selectedFacilityId = '';
+
+    document.addEventListener('DOMContentLoaded', async function(){
+    await initFacilitySelector();
+    await loadApplicantsForSchedule();
+    await loadUpcoming();
+        initCalendar();
+    });
+
+  async function initFacilitySelector() {
+    var select = document.getElementById('calendarFacilitySelect');
+    try {
+      var data = await ATS.apiFetch('/facilities');
+      var rows = Array.isArray(data) ? data : ((data && (data.content || data.items)) || []);
+      if (!rows.length) {
+        select.innerHTML = '<option value="">No facilities available</option>';
+        select.disabled = true;
+        selectedFacilityId = '';
+        return;
+      }
+
+      select.innerHTML = rows.map(function(f){
+        var id = f.id || f.facilityId || (f.facility && f.facility.id) || '';
+        var name = f.name || f.facilityName || (f.facility && f.facility.name) || 'Facility';
+        return '<option value="' + id + '">' + name + '</option>';
+      }).join('');
+
+      var stored = localStorage.getItem('calendar_facility_id');
+      var validStored = rows.some(function(f){
+        var id = f.id || f.facilityId || (f.facility && f.facility.id) || '';
+        return String(id) === String(stored);
+      });
+      selectedFacilityId = validStored ? stored : select.options[0].value;
+      select.value = String(selectedFacilityId);
+    } catch (e) {
+      select.innerHTML = '<option value="">Failed to load facilities</option>';
+      select.disabled = true;
+      selectedFacilityId = '';
+      ATS.notify('danger', e.message);
+    }
+  }
+
+  document.getElementById('calendarFacilitySelect').addEventListener('change', async function(){
+    selectedFacilityId = this.value || '';
+    localStorage.setItem('calendar_facility_id', selectedFacilityId);
+    await loadApplicantsForSchedule();
+    await loadUpcoming();
+    if (calendar) {
+      calendar.refetchEvents();
+    }
+  });
+
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  // Backend expects LocalDateTime-style values without timezone suffix.
+  function toLocalDateTimeString(date) {
+    return date.getFullYear() + '-' +
+      pad2(date.getMonth() + 1) + '-' +
+      pad2(date.getDate()) + 'T' +
+      pad2(date.getHours()) + ':' +
+      pad2(date.getMinutes()) + ':' +
+      pad2(date.getSeconds());
+  }
+
+  function normalizeDateTimeLocalInput(value) {
+    if (!value) return value;
+    return value.length === 16 ? (value + ':00') : value;
+  }
+
+  function normalizeCalendarRows(data) {
+    return Array.isArray(data) ? data : (data && (data.events || data.content || data.items || data.interviews || data.orientations || []));
+  }
+
+  function getStatusUpper(value) {
+    return String(value || '').toUpperCase();
+  }
+
+  function isNoShowEvent(ev) {
+    var statusUpper = getStatusUpper(ev.status);
+    return ev.noShow === true || statusUpper.indexOf('NO_SHOW') !== -1 || statusUpper.indexOf('NO-SHOW') !== -1;
+  }
+
+  function eventDateValue(ev) {
+    return ev.scheduledDate || ev.startDate || ev.start;
+  }
+
+  function buildCalendarEvent(ev, kind) {
+    var statusUpper = getStatusUpper(ev.status);
+    var isCompleted = statusUpper.indexOf('COMPLET') !== -1;
+    var color = '#178ec3';
+    if (kind === 'orientation') {
+      color = isCompleted ? '#072f41' : '#3bb2e7';
+    } else {
+      color = isCompleted ? '#0f5f82' : '#178ec3';
+    }
+    return {
+      id: ev.id || ev.interviewId || ev.orientationId,
+      title: (ev.applicantName || (ev.applicant && ev.applicant.name) || (kind === 'orientation' ? 'Orientation' : 'Interview')),
+      start: eventDateValue(ev),
+      end: ev.endDate || ev.end,
+      color: color,
+      extendedProps: {
+        kind: kind,
+        detailsType: kind === 'orientation' ? 'Orientation' : (ev.interviewType || ev.type || 'Interview'),
+        status: ev.status,
+        facility: ev.facility,
+        facilityName: ev.facilityName,
+        notes: ev.notes
+      }
+    };
+  }
+
+    function initCalendar() {
+        var calEl = document.getElementById('mainCalendar');
+        calendar = new FullCalendar.Calendar(calEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+            },
+            height: 580,
+            events: fetchEvents,
+            eventClick: function(info){
+                showEventModal(info.event);
+            },
+            eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: 'short' }
+        });
+        calendar.render();
+    }
+
+    async function fetchEvents(info, successCb, failureCb) {
+        try {
+        var params = new URLSearchParams();
+        params.set('startDate', toLocalDateTimeString(info.start));
+        params.set('endDate', toLocalDateTimeString(info.end));
+        if (selectedFacilityId) {
+          params.set('facilityId', selectedFacilityId);
+        }
+            var responses = await Promise.all([
+              ATS.apiFetch('/calendar/interviews?' + params),
+              ATS.apiFetch('/calendar/orientations?' + params)
+            ]);
+            var interviews = normalizeCalendarRows(responses[0]).filter(function(ev){ return !isNoShowEvent(ev); });
+            var orientations = normalizeCalendarRows(responses[1]).filter(function(ev){ return !isNoShowEvent(ev); });
+            var events = interviews.map(function(ev){ return buildCalendarEvent(ev, 'interview'); })
+              .concat(orientations.map(function(ev){ return buildCalendarEvent(ev, 'orientation'); }));
+            successCb(events);
+        } catch(err){ failureCb(err); }
+    }
+
+    function showEventModal(event) {
+        var ev = event.extendedProps;
+        document.getElementById('eventModalTitle').textContent = event.title;
+        document.getElementById('eventModalBody').innerHTML =
+            '<div class="row g-2">' +
+            '<div class="col-6"><small class="text-muted d-block">Date &amp; Time</small><span class="fw-semibold">' + ATS.formatDateTime(event.start) + '</span></div>' +
+        '<div class="col-6"><small class="text-muted d-block">Type</small><span class="fw-semibold">' + (ev.detailsType || '—') + '</span></div>' +
+            '<div class="col-6"><small class="text-muted d-block">Facility</small><span class="fw-semibold">' + ((ev.facility && ev.facility.name) || ev.facilityName || '—') + '</span></div>' +
+            '<div class="col-6"><small class="text-muted d-block">Status</small>' + ATS.statusBadgeHtml(ev.status) + '</div>' +
+            (ev.notes ? '<div class="col-12"><small class="text-muted d-block">Notes</small><p class="mb-0">' + ev.notes + '</p></div>' : '') +
+            '</div>';
+        var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+        modal.show();
+    }
+
+    async function loadUpcoming() {
+        var list = document.getElementById('upcomingList');
+        try {
+        var params = new URLSearchParams({ days: '7', limit: '10' });
+        if (selectedFacilityId) {
+          params.set('facilityId', selectedFacilityId);
+        }
+        var responses = await Promise.all([
+          ATS.apiFetch('/calendar/interviews/upcoming?' + params),
+          ATS.apiFetch('/calendar/orientations/upcoming?' + params)
+        ]);
+            var interviewItems = normalizeCalendarRows(responses[0]).filter(function(ev){ return !isNoShowEvent(ev); }).map(function(ev){
+              ev.__kind = 'interview';
+              return ev;
+            });
+            var orientationItems = normalizeCalendarRows(responses[1]).filter(function(ev){ return !isNoShowEvent(ev); }).map(function(ev){
+              ev.__kind = 'orientation';
+              return ev;
+            });
+            var items = interviewItems.concat(orientationItems).sort(function(a, b){
+              return new Date(eventDateValue(a) || 0) - new Date(eventDateValue(b) || 0);
+            }).slice(0, 10);
+            document.getElementById('upcomingCount').textContent = items.length;
+            if (!items.length) {
+                list.innerHTML = '<div class="p-3 text-muted text-center small">No upcoming interview or orientation events</div>';
+                return;
+            }
+            list.innerHTML = items.map(function(iv){
+                var itemDate = new Date(eventDateValue(iv));
+                var statusUpper = getStatusUpper(iv.status);
+                var isCompleted = statusUpper.indexOf('COMPLET') !== -1;
+                var kindLabel = iv.__kind === 'orientation'
+                  ? (isCompleted ? 'Orientation Completed' : 'Orientation')
+                  : (isCompleted ? 'Interview Completed' : 'Interview');
+                return '<div class="d-flex align-items-start gap-2 px-3 py-2 border-bottom">' +
+                    '<div class="text-center" style="min-width:36px;"><div class="fw-bold text-primary" style="font-size:1rem;line-height:1;">' +
+                    itemDate.getDate() + '</div>' +
+                    '<div class="text-muted" style="font-size:.65rem;">' +
+                    itemDate.toLocaleString('default',{month:'short'}) + '</div></div>' +
+                    '<div><div class="fw-semibold" style="font-size:.85rem;">' + (iv.applicantName || (iv.applicant && iv.applicant.name) || '—') + '</div>' +
+                    '<div class="text-muted" style="font-size:.75rem;">' + kindLabel + '</div></div></div>';
+            }).join('');
+        } catch(e){
+            list.innerHTML = '<div class="p-3 text-danger small">' + e.message + '</div>';
+        }
+    }
+
+    async function loadApplicantsForSchedule() {
+        try {
+        var params = new URLSearchParams({ size: '200' });
+        if (selectedFacilityId) {
+          params.set('facilityId', selectedFacilityId);
+        }
+        var data = await ATS.apiFetch('/applicants?' + params);
+            var rows = Array.isArray(data) ? data : ((data && (data.content || data.items)) || []);
+            document.getElementById('schedApplicantId').innerHTML =
+                '<option value="">— Select applicant —</option>' +
+                rows.map(function(a){
+                    return '<option value="' + (a.id || a.applicantId) + '">' + (a.name || a.fullName || '—') + '</option>';
+                }).join('');
+        } catch(e){ /* ignore */ }
+    }
+
+    document.getElementById('schedSubmitBtn').addEventListener('click', async function(){
+        var applicantId = document.getElementById('schedApplicantId').value;
+        var dateTime    = document.getElementById('schedDateTime').value;
+        if (!applicantId || !dateTime) { ATS.notify('warning', 'Please fill in required fields.'); return; }
+        var btn = this;
+        btn.disabled = true;
+        try {
+          var localDateTime = normalizeDateTimeLocalInput(dateTime);
+            await ATS.apiFetch('/applicants/' + applicantId + '/interviews', {
+                method: 'POST',
+                body: JSON.stringify({
+                scheduledDate: localDateTime,
+                durationMinutes: 60,
+                    interviewType: document.getElementById('schedType').value,
+                notes: document.getElementById('schedNotes').value.trim() || null,
+                generateMeetingLink: true,
+                sendCalendarInvites: true,
+                sendEmailNotifications: true
+                })
+            });
+            ATS.notify('success', 'Interview scheduled!');
+            bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+            calendar.refetchEvents();
+            loadUpcoming();
+        } catch(e){ ATS.notify('danger', e.message); }
+        btn.disabled = false;
+    });
+    /*]]>*/
+</script>
+</body>
+</html>

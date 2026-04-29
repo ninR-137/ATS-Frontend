@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Sign In')}"></head>
+<body class="login-page">
+
+    <!-- Left: Brand Panel -->
+    <div class="login-brand-panel">
+        <div style="position:relative;z-index:1;text-align:center;max-width:420px;">
+            <div style="width:72px;height:72px;background:rgba(255,255,255,0.2);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;margin:0 auto 1.5rem;">
+                <i class="fas fa-briefcase"></i>
+            </div>
+            <div class="login-brand-title">Recruitment Management System</div>
+            <div class="login-brand-sub">Streamline your hiring workflow</div>
+
+            <div class="login-brand-features">
+                <div class="login-feature">
+                    <div class="login-feature-icon"><i class="fas fa-users"></i></div>
+                    <span>Manage applicants across all facilities</span>
+                </div>
+                <div class="login-feature">
+                    <div class="login-feature-icon"><i class="fas fa-calendar-check"></i></div>
+                    <span>Schedule interviews with smart calendar</span>
+                </div>
+                <div class="login-feature">
+                    <div class="login-feature-icon"><i class="fas fa-chart-line"></i></div>
+                    <span>Track hiring metrics in real-time</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Login Form -->
+    <div class="login-form-panel">
+        <div class="login-form-card">
+            <h2 class="fw-bold mb-1" style="font-size:1.6rem;color:var(--gray-900);">Welcome back</h2>
+            <p class="text-muted mb-4" style="font-size:0.9rem;">Sign in to your account to continue</p>
+
+            <form id="loginForm" novalidate>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email address</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope fa-sm"></i></span>
+                        <input type="email" class="form-control" id="email" placeholder="you@example.com" required autocomplete="email"/>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="password" class="form-label mb-0">Password</label>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock fa-sm"></i></span>
+                        <input type="password" class="form-control" id="password" placeholder="Enter your password" required autocomplete="current-password"/>
+                        <button class="btn btn-outline-secondary" type="button" id="togglePass" tabindex="-1">
+                            <i class="fas fa-eye fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" id="loginBtn" style="padding:0.65rem;">
+                    <span class="spinner-border spinner-border-sm d-none me-2" id="loginSpinner"></span>
+                    <i class="fas fa-right-to-bracket me-2"></i>Sign In
+                </button>
+            </form>
+
+            <hr class="my-4"/>
+            <p class="text-center text-muted mb-1" style="font-size:0.85rem;">
+                Don't have an account?
+                <a href="/register" class="fw-semibold text-decoration-none" style="color:var(--primary);">Register</a>
+            </p>
+            <p class="text-center text-muted mb-0" style="font-size:0.85rem;">
+                Need to verify your email?
+                <a href="/verify" class="fw-semibold text-decoration-none" style="color:var(--primary);">Verify here</a>
+            </p>
+        </div>
+    </div>
+
+<script th:inline="javascript">
+    document.getElementById('togglePass').addEventListener('click', function () {
+        const field = document.getElementById('password');
+        const icon = this.querySelector('i');
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            field.type = 'password';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const spinner = document.getElementById('loginSpinner');
+        const btn = document.getElementById('loginBtn');
+
+        if (!email || !password) {
+            window.appNotify('warning', 'Please fill in all fields.');
+            return;
+        }
+
+        spinner.classList.remove('d-none');
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(ATS.API_BASE + '/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password})
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Invalid credentials');
+
+            localStorage.setItem('jwt_token', data.token);
+
+            try {
+                const part = data.token.split('.')[1] || '';
+                const norm = part.replace(/-/g, '+').replace(/_/g, '/');
+                const pad = (4 - (norm.length % 4)) % 4;
+                const payload = JSON.parse(atob(norm + '='.repeat(pad)));
+                const roles = [payload.role, ...(Array.isArray(payload.roles) ? payload.roles : []),
+                               ...(Array.isArray(payload.authorities) ? payload.authorities : [])].filter(Boolean);
+                const facilityId = payload.facilityId || payload.facility_id ||
+                    payload.facility?.id || (Array.isArray(payload.facilityIds) ? payload.facilityIds[0] : null);
+                localStorage.setItem('user_info', JSON.stringify({
+                    role: roles[0] || '', roles, facilityId: facilityId || '',
+                    email: payload.sub || email
+                }));
+            } catch (_) {}
+
+            window.location.href = '/dashboard';
+        } catch (err) {
+            window.appNotify('danger', err.message || 'Login failed. Please try again.');
+        } finally {
+            spinner.classList.add('d-none');
+            btn.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

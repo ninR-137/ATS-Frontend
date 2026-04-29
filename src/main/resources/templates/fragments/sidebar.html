@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<nav th:fragment="sidebar(page)" class="sidebar-v2" id="appSidebar">
+    <!-- Brand -->
+    <a href="/dashboard" class="sidebar-brand">
+        <div class="sidebar-brand-icon">
+            <i class="fas fa-briefcase"></i>
+        </div>
+        <div>
+            <div class="sidebar-brand-text">RMS</div>
+            <div class="sidebar-brand-sub">Recruitment Management</div>
+        </div>
+    </a>
+
+    <!-- Nav Body -->
+    <div class="sidebar-nav-body">
+
+        <!-- MAIN -->
+        <div class="sidebar-section-title">Main</div>
+
+        <a href="/dashboard" data-nav-href="/dashboard"
+           th:class="${page == 'dashboard'} ? 'sidebar-link-v2 active' : 'sidebar-link-v2'">
+            <span class="link-icon"><i class="fas fa-gauge-high"></i></span>
+            <span>Dashboard</span>
+        </a>
+
+        <a href="/applicants" data-nav-href="/applicants"
+           th:class="${page == 'applicants'} ? 'sidebar-link-v2 active' : 'sidebar-link-v2'">
+            <span class="link-icon"><i class="fas fa-users"></i></span>
+            <span>Applicants</span>
+        </a>
+
+        <a href="/calendar" data-nav-href="/calendar"
+           th:class="${page == 'calendar'} ? 'sidebar-link-v2 active' : 'sidebar-link-v2'">
+            <span class="link-icon"><i class="fas fa-calendar-days"></i></span>
+            <span>Calendar</span>
+        </a>
+
+          <a href="/facilities" data-nav-href="/facilities"
+              th:class="${page == 'facilities'} ? 'sidebar-link-v2 active' : 'sidebar-link-v2'">
+                <span class="link-icon"><i class="fas fa-building"></i></span>
+                <span>Facilities</span>
+          </a>
+
+        <a href="/facilities/create" data-nav-href="/facilities/create"
+           th:class="${page == 'create-facility'} ? 'sidebar-link-v2 active admin-only' : 'sidebar-link-v2 admin-only'"
+           style="display:none;">
+            <span class="link-icon"><i class="fas fa-square-plus"></i></span>
+            <span>Create Facility</span>
+        </a>
+
+    </div>
+
+    <!-- Footer: user info + logout -->
+    <div class="sidebar-footer-v2">
+        <div class="sidebar-user-info">
+            <div class="sidebar-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div style="min-width:0;">
+                <div class="sidebar-user-name user-email-display">User</div>
+                <div class="sidebar-user-role"><span id="roleBadge" class="badge bg-secondary" style="font-size:0.65rem;">USER</span></div>
+            </div>
+        </div>
+        <button id="logoutBtn" class="sidebar-logout-btn">
+            <i class="fas fa-right-from-bracket me-1"></i> Sign Out
+        </button>
+    </div>
+</nav>
+
+</body>
+</html>

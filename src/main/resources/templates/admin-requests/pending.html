@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Admin Requests')}"></head>
+<body class="app-body">
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div th:replace="~{fragments/sidebar :: sidebar(page='admin-requests')}"></div>
+<div class="app-main">
+  <header class="app-topbar">
+    <button id="sidebarToggle" class="topbar-icon-btn mobile-toggle me-2"><i class="fas fa-bars"></i></button>
+    <div class="topbar-breadcrumb">
+      <p class="topbar-title">Admin Requests</p>
+      <p class="topbar-subtitle">Review and approve admin access requests</p>
+    </div>
+    <div class="topbar-actions">
+      <button id="reloadBtn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-rotate-right me-1"></i>Refresh</button>
+    </div>
+  </header>
+
+  <main class="app-content">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+        <div class="input-group" style="max-width:280px;">
+          <span class="input-group-text bg-white border-end-0"><i class="fas fa-magnifying-glass fa-sm text-muted"></i></span>
+          <input id="searchInput" type="text" class="form-control form-control-sm border-start-0" placeholder="Search by email..."/>
+        </div>
+        <button id="clearSearchBtn" class="btn btn-outline-secondary btn-sm">Clear</button>
+        <span class="ms-auto text-muted small">Only pending requests are shown (API contract)</span>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th style="padding-left:1.25rem;">User</th>
+                <th>Status</th>
+                <th>Requested At</th>
+                <th style="width:190px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="requestsTableBody">
+              <tr><td colspan="4" class="text-muted p-4 text-center">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    ATS.initPage();
+
+    var allRequests = [];
+    var searchQuery = '';
+
+    async function loadPendingRequests() {
+        try {
+            var data = await ATS.apiFetch('/admin-requests/pending');
+            allRequests = Array.isArray(data) ? data : (data && (data.content || data.items || []));
+            renderTable();
+        } catch(err) {
+            document.getElementById('requestsTableBody').innerHTML =
+                '<tr><td colspan="4" class="p-4 text-center text-danger">' + err.message + '</td></tr>';
+        }
+    }
+
+    function renderTable() {
+        var tbody = document.getElementById('requestsTableBody');
+        var filtered = allRequests.filter(function(r){
+            var matchesSearch = !searchQuery || (r.userEmail || r.email || '').toLowerCase().includes(searchQuery);
+            return matchesSearch;
+        });
+
+        if (!filtered.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-muted">No requests found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(function(r){
+            var id     = r.id || r.requestId;
+            var email  = r.userEmail || r.email || 'Unknown';
+            var status = (r.status || 'PENDING').toUpperCase();
+            var initials = email.slice(0, 2).toUpperCase();
+            var badgeClass = 'bg-warning text-dark';
+            var actions = '<button class="btn btn-success btn-sm" data-request-action="APPROVED" data-request-id="' + id + '"><i class="fas fa-check me-1"></i>Approve</button>' +
+                '<button class="btn btn-outline-danger btn-sm" data-request-action="REJECTED" data-request-id="' + id + '"><i class="fas fa-xmark me-1"></i>Reject</button>';
+
+            return '<tr>' +
+                '<td style="padding-left:1.25rem;">' +
+                  '<div class="d-flex align-items-center gap-3">' +
+                    '<div style="width:36px;height:36px;border-radius:50%;background:#bde5f7;color:#0f5f82;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0;">' + initials + '</div>' +
+                    '<div><div class="fw-semibold" style="font-size:.875rem;">' + email + '</div></div>' +
+                  '</div>' +
+                '</td>' +
+                '<td><span class="badge ' + badgeClass + '">' + status + '</span></td>' +
+                '<td class="text-muted" style="font-size:.85rem;">' + ATS.formatDateTime(r.requestedAt || r.createdAt) + '</td>' +
+                '<td><div class="d-flex gap-2">' + actions + '</div></td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function(){
+        searchQuery = this.value.toLowerCase().trim();
+        renderTable();
+    });
+      document.getElementById('clearSearchBtn').addEventListener('click', function(){
+        document.getElementById('searchInput').value = '';
+        searchQuery = '';
+        renderTable();
+      });
+
+      document.getElementById('reloadBtn').addEventListener('click', loadPendingRequests);
+
+    document.getElementById('requestsTableBody').addEventListener('click', async function(e){
+        var btn = e.target.closest('[data-request-action]');
+        if (!btn) return;
+        var requestId = btn.dataset.requestId;
+        var status    = btn.dataset.requestAction;
+        btn.disabled = true;
+        try {
+            await ATS.apiFetch('/admin-requests/' + requestId, {method:'PATCH', body:JSON.stringify({status:status})});
+            ATS.notify('success', 'Request ' + status.toLowerCase() + ' successfully.');
+          allRequests = allRequests.filter(function(r){ return String(r.id || r.requestId) !== String(requestId); });
+          renderTable();
+        } catch(err) {
+            ATS.notify('danger', err.message);
+            btn.disabled = false;
+        }
+    });
+
+      loadPendingRequests();
+    /*]]>*/
+</script>
+</body>
+</html>

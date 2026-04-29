@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Applicants')}"></head>
+<body class="app-body">
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div th:replace="~{fragments/sidebar :: sidebar(page='applicants')}"></div>
+<div class="app-main">
+  <header class="app-topbar">
+    <button id="sidebarToggle" class="topbar-icon-btn mobile-toggle me-2"><i class="fas fa-bars"></i></button>
+    <div class="topbar-breadcrumb">
+      <p class="topbar-title">Applicants</p>
+      <p class="topbar-subtitle">Manage your hiring pipeline</p>
+    </div>
+    <div class="topbar-actions">
+      <a href="/applicants/archived" class="btn btn-outline-secondary btn-sm ms-2"><i class="fas fa-box-archive me-1"></i>Archived</a>
+      <a href="/applicants/create" class="btn btn-primary btn-sm ms-2"><i class="fas fa-plus me-1"></i>New Applicant</a>
+    </div>
+  </header>
+
+  <main class="app-content">
+    <!-- Filters bar -->
+    <div class="card mb-3">
+      <div class="card-body py-2 d-flex flex-wrap gap-2 align-items-center">
+        <div class="input-group" style="max-width:260px;">
+          <span class="input-group-text"><i class="fas fa-magnifying-glass fa-sm"></i></span>
+          <input id="searchInput" type="text" class="form-control form-control-sm" placeholder="Search name, email, role..."/>
+          <button id="clearSearch" class="btn btn-outline-secondary btn-sm" title="Clear"><i class="fas fa-xmark"></i></button>
+        </div>
+        <select id="statusFilter" class="form-select form-select-sm" style="max-width:180px;">
+          <option value="">All Statuses</option>
+          <option value="INVITING_FOR_INTERVIEW">Inviting</option>
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="INTERVIEW_COMPLETED">Interviewed</option>
+          <option value="ORIENTATION_SCHEDULED">Orientation</option>
+          <option value="HIRED">Hired</option>
+          <option value="NOT_QUALIFIED">Not Qualified</option>
+          <option value="NOT_INTERESTED">Not Interested</option>
+        </select>
+        <select id="facilityFilter" class="form-select form-select-sm" style="max-width:220px;">
+          <option value="">All Facilities</option>
+        </select>
+        <button id="applyFiltersBtn" class="btn btn-primary btn-sm"><i class="fas fa-filter me-1"></i>Apply</button>
+        <button id="resetFiltersBtn" class="btn btn-outline-secondary btn-sm">Reset</button>
+        <span class="ms-auto text-muted small" id="resultCount"></span>
+      </div>
+    </div>
+
+    <!-- Bulk action bar -->
+    <div class="bulk-action-bar" id="bulkBar">
+      <span id="bulkCount">0 selected</span>
+      <select id="bulkStatusSelect" class="form-select form-select-sm" style="max-width:180px;color:#111827;">
+        <option value="">Change Status...</option>
+        <option value="INVITING_FOR_INTERVIEW">Inviting</option>
+        <option value="SCHEDULED">Scheduled</option>
+        <option value="INTERVIEW_COMPLETED">Interviewed</option>
+        <option value="ORIENTATION_SCHEDULED">Orientation</option>
+        <option value="HIRED">Hired</option>
+        <option value="NOT_QUALIFIED">Not Qualified</option>
+        <option value="NOT_INTERESTED">Not Interested</option>
+      </select>
+      <button id="bulkApplyBtn" class="btn btn-warning btn-sm">Apply</button>
+      <button id="bulkArchiveBtn" class="btn btn-outline-danger btn-sm">Archive Selected</button>
+      <button id="bulkClearBtn" class="btn btn-outline-secondary btn-sm ms-auto">Clear</button>
+    </div>
+
+    <!-- TABLE VIEW -->
+    <div id="tableView">
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" id="applicantsTable">
+              <thead>
+                <tr>
+                  <th style="width:40px;padding-left:1rem;"><input type="checkbox" id="selectAll" class="form-check-input"/></th>
+                  <th>Name</th><th>Role</th><th>Facility</th><th>Status</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="applicantsTableBody">
+                <tr><td colspan="6" class="text-muted p-4 text-center">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2 py-2 px-3" style="background:white;border-top:1px solid var(--gray-200);">
+          <div class="d-flex align-items-center gap-2">
+            <label class="text-muted small mb-0">Per page:</label>
+            <select id="pageSizeSelect" class="form-select form-select-sm" style="width:70px;">
+              <option value="10">10</option><option value="20" selected>20</option><option value="50">50</option>
+            </select>
+          </div>
+          <nav><ul class="pagination pagination-sm mb-0" id="paginationEl"></ul></nav>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Applicant Detail Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="applicantPanel">
+  <div class="offcanvas-header border-bottom">
+    <div>
+      <h5 class="offcanvas-title fw-bold" id="panelName">Applicant Details</h5>
+      <div id="panelStatus"></div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="nav nav-tabs-v2 mb-3" id="panelTabs">
+      <li class="nav-item"><button class="nav-link active" data-tab="overview">Overview</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="documents">Documents</button></li>
+    </ul>
+    <div id="panelTabContent">
+      <div class="text-center p-4"><div class="spinner-border text-primary"></div></div>
+    </div>
+  </div>
+  <div class="offcanvas-footer p-3 border-top d-flex flex-column gap-2" id="panelFooter">
+    <div class="d-flex gap-2">
+      <a id="panelEditBtn" href="#" class="btn btn-outline-primary btn-sm"><i class="fas fa-pen me-1"></i>Edit</a>
+      <button id="scheduleInterviewBtn" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleInterviewModal"><i class="fas fa-calendar-plus me-1"></i>Schedule Interview</button>
+    </div>
+    <div class="d-flex gap-2">
+      <select id="panelStatusSelect" class="form-select form-select-sm" style="flex:1;">
+        <option value="">Change Status...</option>
+        <option value="INVITING_FOR_INTERVIEW">Inviting</option>
+        <option value="SCHEDULED">Scheduled</option>
+        <option value="INTERVIEW_COMPLETED">Interviewed</option>
+        <option value="ORIENTATION_SCHEDULED">Orientation</option>
+        <option value="HIRED">Hired</option>
+        <option value="NOT_QUALIFIED">Not Qualified</option>
+        <option value="NOT_INTERESTED">Not Interested</option>
+      </select>
+      <button id="panelStatusApplyBtn" class="btn btn-primary btn-sm">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Interview Modal -->
+<div class="modal fade" id="scheduleInterviewModal" tabindex="-1" aria-labelledby="scheduleInterviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="scheduleInterviewModalLabel"><i class="fas fa-calendar-plus me-2"></i>Schedule Interview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="scheduleInterviewForm" novalidate>
+          <div class="mb-3">
+            <label for="ivScheduledDate" class="form-label">Date &amp; Time <span class="text-danger">*</span></label>
+            <input type="datetime-local" id="ivScheduledDate" class="form-control" required/>
+          </div>
+          <div class="mb-3">
+            <label for="ivDuration" class="form-label">Duration (minutes)</label>
+            <input type="number" id="ivDuration" class="form-control" value="60" min="15" max="480"/>
+          </div>
+          <div class="mb-3">
+            <label for="ivType" class="form-label">Interview Type <span class="text-danger">*</span></label>
+            <select id="ivType" class="form-select" required>
+              <option value="">Select type...</option>
+              <option value="phone">Phone</option>
+              <option value="video">Video</option>
+              <option value="in-person">In-person</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="ivNotes" class="form-label">Notes</label>
+            <textarea id="ivNotes" class="form-control" rows="3" placeholder="Optional notes..."></textarea>
+          </div>
+          <div class="mb-1">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="ivGenerateLink" checked/>
+              <label class="form-check-label" for="ivGenerateLink">Generate Meeting Link</label>
+            </div>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="ivSendCalendar" checked/>
+              <label class="form-check-label" for="ivSendCalendar">Send Calendar Invites</label>
+            </div>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="ivSendEmail" checked/>
+              <label class="form-check-label" for="ivSendEmail">Send Email Notifications</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="scheduleInterviewSubmitBtn" class="btn btn-success"><i class="fas fa-calendar-check me-1"></i>Schedule</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    ATS.initPage();
+
+    var currentPage = 0, pageSize = 20, totalPages = 0;
+    var currentFilters = { search: '', status: '', facilityId: '' };
+    var selectedIds = new Set();
+    var currentView = 'table';
+    var currentPanelId = null;
+    var lastLoadedApplicantsById = {};
+
+    function getArchivedApplicantRegistry() {
+      try {
+        return JSON.parse(localStorage.getItem('ats_archived_applicants') || '[]');
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function setArchivedApplicantRegistry(entries) {
+      localStorage.setItem('ats_archived_applicants', JSON.stringify(entries || []));
+    }
+
+    function rememberArchivedApplicants(entries) {
+      var registry = getArchivedApplicantRegistry();
+      var byId = {};
+      registry.forEach(function(item) { byId[String(item.id)] = item; });
+      entries.forEach(function(item) { byId[String(item.id)] = item; });
+      setArchivedApplicantRegistry(Object.keys(byId).map(function(id) { return byId[id]; }));
+    }
+
+    async function loadFacilityFilterOptions() {
+      var sel = document.getElementById('facilityFilter');
+      try {
+        var data = await ATS.apiFetch('/facilities');
+        var rows = Array.isArray(data) ? data : ((data && (data.content || data.items)) || []);
+        sel.innerHTML = '<option value="">All Facilities</option>' + rows.map(function(f){
+          var id = f.id || f.facilityId || (f.facility && f.facility.id) || '';
+          var name = f.name || f.facilityName || (f.facility && f.facility.name) || 'Facility';
+          return '<option value="' + id + '">' + name + '</option>';
+        }).join('');
+        var savedFacility = localStorage.getItem('applicants_facility_id') || '';
+        if (savedFacility && Array.from(sel.options).some(function(o){ return o.value === savedFacility; })) {
+          sel.value = savedFacility;
+          currentFilters.facilityId = savedFacility;
+        }
+      } catch (e) {
+        sel.innerHTML = '<option value="">All Facilities</option>';
+      }
+    }
+
+    /* ---------- TABLE ---------- */
+    async function loadApplicants() {
+        var tbody = document.getElementById('applicantsTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted p-4 text-center">Loading...</td></tr>';
+        try {
+        var rows = [];
+        var total = 0;
+
+        if (currentFilters.search) {
+          var searchParams = new URLSearchParams({ q: currentFilters.search, limit: String(pageSize) });
+          if (currentFilters.status) searchParams.set('status', currentFilters.status);
+          if (currentFilters.facilityId) searchParams.set('facilityId', currentFilters.facilityId);
+          var searchData = await ATS.apiFetch('/applicants/search?' + searchParams);
+          rows = Array.isArray(searchData) ? searchData : ((searchData && (searchData.content || searchData.items)) || []);
+          total = rows.length;
+          totalPages = 1;
+        } else {
+          var params = new URLSearchParams({ page: String(currentPage), size: String(pageSize) });
+          if (currentFilters.status) params.set('status', currentFilters.status);
+          if (currentFilters.facilityId) params.set('facilityId', currentFilters.facilityId);
+          var data = await ATS.apiFetch('/applicants?' + params);
+          rows = Array.isArray(data) ? data : ((data && (data.content || data.items)) || []);
+          total = data && data.totalElements;
+          totalPages = (data && data.totalPages) || Math.ceil((total || rows.length) / pageSize) || 1;
+        }
+
+            document.getElementById('resultCount').textContent = (total || rows.length) + ' applicants';
+            lastLoadedApplicantsById = {};
+            rows.forEach(function(a) {
+              var id = a.id || a.applicantId || '';
+              lastLoadedApplicantsById[String(id)] = a;
+            });
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-muted">No applicants found.</td></tr>';
+                document.getElementById('paginationEl').innerHTML = '';
+                return;
+            }
+            tbody.innerHTML = rows.map(function(a){
+                var id = a.id || a.applicantId || '';
+                var name = a.name || a.fullName || a.applicantName || '&#8212;';
+                var role = a.role || a.position || '&#8212;';
+                var facility = (a.facility && a.facility.name) || a.facilityName || '&#8212;';
+                var chk = '<td style="padding-left:1rem;"><input type="checkbox" class="form-check-input row-check" data-id="' + id + '" ' + (selectedIds.has(id) ? 'checked' : '') + '/></td>';
+              return '<tr data-profile-id="' + id + '" style="cursor:pointer;">' + chk +
+                '<td class="fw-semibold">' + name + '</td>' +
+                    '<td class="text-muted">' + role + '</td>' +
+                    '<td class="text-muted">' + facility + '</td>' +
+                    '<td>' + ATS.statusBadgeHtml(a.status) + '</td>' +
+                '<td><a class="btn btn-sm btn-outline-secondary" href="/applicants/' + id + '" style="padding:.2rem .5rem;font-size:.75rem;"><i class="fas fa-eye"></i></a></td>' +
+                    '</tr>';
+            }).join('');
+                if (currentFilters.search) {
+                  document.getElementById('paginationEl').innerHTML = '';
+                } else {
+                  renderPagination(totalPages, currentPage);
+                }
+        } catch(err) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-danger">' + err.message + '</td></tr>';
+        }
+    }
+
+    function renderPagination(total, current) {
+        var el = document.getElementById('paginationEl');
+        if (total <= 1) { el.innerHTML = ''; return; }
+        var html = '';
+        if (current > 0) html += '<li class="page-item"><a class="page-link" data-page="' + (current - 1) + '">&laquo;</a></li>';
+        for (var i = Math.max(0, current - 2); i <= Math.min(total - 1, current + 2); i++) {
+            html += '<li class="page-item ' + (i === current ? 'active' : '') + '"><a class="page-link" data-page="' + i + '">' + (i + 1) + '</a></li>';
+        }
+        if (current < total - 1) html += '<li class="page-item"><a class="page-link" data-page="' + (current + 1) + '">&raquo;</a></li>';
+        el.innerHTML = html;
+    }
+
+    document.getElementById('paginationEl').addEventListener('click', async function(e){
+        var a = e.target.closest('[data-page]');
+        if (!a) return;
+        currentPage = parseInt(a.dataset.page);
+        await loadApplicants();
+    });
+
+    document.getElementById('pageSizeSelect').addEventListener('change', async function(){
+        pageSize = parseInt(this.value); currentPage = 0;
+        await loadApplicants();
+    });
+
+    /* ---------- FILTERS ---------- */
+    document.getElementById('applyFiltersBtn').addEventListener('click', function(){
+        currentFilters.search = document.getElementById('searchInput').value.trim();
+        currentFilters.status = document.getElementById('statusFilter').value;
+      currentFilters.facilityId = document.getElementById('facilityFilter').value;
+      localStorage.setItem('applicants_facility_id', currentFilters.facilityId || '');
+        currentPage = 0;
+        loadApplicants();
+    });
+    document.getElementById('resetFiltersBtn').addEventListener('click', function(){
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+      document.getElementById('facilityFilter').value = '';
+      currentFilters = { search: '', status: '', facilityId: '' };
+      localStorage.removeItem('applicants_facility_id');
+        currentPage = 0;
+        loadApplicants();
+    });
+    document.getElementById('clearSearch').addEventListener('click', function(){
+        document.getElementById('searchInput').value = '';
+        currentFilters.search = '';
+        loadApplicants();
+    });
+    document.getElementById('searchInput').addEventListener('keydown', function(e){
+        if (e.key !== 'Enter') return;
+        currentFilters.search = this.value.trim();
+        currentPage = 0;
+        loadApplicants();
+    });
+
+    /* ---------- SELECT ALL + BULK ---------- */
+    document.getElementById('selectAll').addEventListener('change', function(){
+        var checked = this.checked;
+        document.querySelectorAll('.row-check').forEach(function(cb){
+            cb.checked = checked;
+            var id = cb.dataset.id;
+            if (checked) selectedIds.add(id); else selectedIds.delete(id);
+        });
+        updateBulkBar();
+    });
+    document.getElementById('applicantsTableBody').addEventListener('change', function(e){
+        if (!e.target.classList.contains('row-check')) return;
+        var id = e.target.dataset.id;
+        if (e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+        updateBulkBar();
+    });
+    function updateBulkBar(){
+        var bar = document.getElementById('bulkBar');
+        if (selectedIds.size > 0) {
+            bar.classList.add('show');
+            document.getElementById('bulkCount').textContent = selectedIds.size + ' selected';
+        } else {
+            bar.classList.remove('show');
+        }
+    }
+    document.getElementById('bulkClearBtn').addEventListener('click', function(){
+        selectedIds.clear();
+        document.querySelectorAll('.row-check').forEach(function(cb){ cb.checked = false; });
+        document.getElementById('selectAll').checked = false;
+        updateBulkBar();
+    });
+    document.getElementById('bulkApplyBtn').addEventListener('click', async function(){
+        var newStatus = document.getElementById('bulkStatusSelect').value;
+        if (!newStatus || !selectedIds.size) return;
+        try {
+            await Promise.all(Array.from(selectedIds).map(function(id){
+                return ATS.apiFetch('/applicants/' + id + '/status', {method:'PATCH', body:JSON.stringify({status:newStatus})});
+            }));
+            ATS.notify('success', selectedIds.size + ' applicants updated.');
+            selectedIds.clear();
+            updateBulkBar();
+            loadApplicants();
+        } catch(e){ ATS.notify('danger', e.message); }
+    });
+
+        document.getElementById('bulkArchiveBtn').addEventListener('click', async function(){
+          if (!selectedIds.size) return;
+          var confirmArchive = await ATS.confirm('Archive the selected applicants?', { title: 'Archive Applicants', confirmText: 'Archive Selected' });
+          if (!confirmArchive) return;
+
+          var ids = Array.from(selectedIds);
+          var btn = this;
+          btn.disabled = true;
+          ATS.setBlockingBusy(true, 'Archiving applicants. Please do not refresh or navigate away.');
+          try {
+            var response = await ATS.apiFetch('/applicants/bulk', {
+              method: 'DELETE',
+              body: JSON.stringify({ applicantIds: ids.map(function(id) { return Number(id); }) })
+            });
+            var archivedIds = (response && response.archivedIds) || ids;
+            rememberArchivedApplicants(archivedIds.map(function(id) {
+              var applicant = lastLoadedApplicantsById[String(id)] || {};
+              return {
+                id: String(id),
+                name: applicant.name || applicant.fullName || applicant.applicantName || 'Applicant',
+                email: applicant.email || '',
+                role: applicant.role || applicant.position || '',
+                facilityName: (applicant.facility && applicant.facility.name) || applicant.facilityName || '',
+                archivedAt: new Date().toISOString()
+              };
+            }));
+            selectedIds.clear();
+            document.getElementById('selectAll').checked = false;
+            updateBulkBar();
+            ATS.notify('success', (response && response.message) || 'Applicants archived successfully');
+            await loadApplicants();
+          } catch(err) {
+            ATS.notify('danger', err.message || 'Failed to archive applicants');
+          } finally {
+            ATS.setBlockingBusy(false);
+            btn.disabled = false;
+          }
+        });
+
+    /* ---------- OPEN DETAIL PANEL ---------- */
+    document.getElementById('applicantsTableBody').addEventListener('click', function(e){
+      if (e.target.closest('.form-check-input') || e.target.closest('.row-check')) return;
+      var row = e.target.closest('tr[data-profile-id]');
+      if (!row) return;
+      window.location.href = '/applicants/' + row.dataset.profileId;
+    });
+
+    var panelBS = null;
+    function openPanel(id) {
+        currentPanelId = id;
+        if (!panelBS) panelBS = new bootstrap.Offcanvas(document.getElementById('applicantPanel'));
+        panelBS.show();
+        document.querySelectorAll('#panelTabs .nav-link').forEach(function(b){ b.classList.remove('active'); });
+        document.querySelector('#panelTabs [data-tab="overview"]').classList.add('active');
+        loadPanelTab('overview');
+        document.getElementById('panelEditBtn').href = '/applicants/' + id + '/edit';
+        document.getElementById('panelStatusSelect').value = '';
+    }
+
+    document.querySelectorAll('#panelTabs .nav-link').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            document.querySelectorAll('#panelTabs .nav-link').forEach(function(b){ b.classList.remove('active'); });
+            this.classList.add('active');
+            loadPanelTab(this.dataset.tab);
+        });
+    });
+
+    async function loadPanelTab(tab) {
+        var content = document.getElementById('panelTabContent');
+        content.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" style="width:1.5rem;height:1.5rem;"></div></div>';
+        try {
+            if (tab === 'overview') {
+                var a = await ATS.apiFetch('/applicants/' + currentPanelId);
+                document.getElementById('panelName').textContent = a.name || a.fullName || a.applicantName || '—';
+                document.getElementById('panelStatus').innerHTML = ATS.statusBadgeHtml(a.status);
+                content.innerHTML =
+                    '<div class="row g-3">' +
+                    '<div class="col-6"><small class="text-muted d-block">Email</small><span class="fw-semibold">' + (a.email || '—') + '</span></div>' +
+                    '<div class="col-6"><small class="text-muted d-block">Phone</small><span class="fw-semibold">' + (a.phone || a.phoneNumber || '—') + '</span></div>' +
+                    '<div class="col-6"><small class="text-muted d-block">Role</small><span class="fw-semibold">' + (a.role || a.position || '—') + '</span></div>' +
+                    '<div class="col-6"><small class="text-muted d-block">Facility</small><span class="fw-semibold">' + ((a.facility && a.facility.name) || a.facilityName || '—') + '</span></div>' +
+                    (a.notes ? '<div class="col-12"><small class="text-muted d-block">Notes</small><p style="font-size:.875rem;">' + a.notes + '</p></div>' : '') +
+                    '</div>';
+            } else if (tab === 'documents') {
+                content.innerHTML = '<div class="d-grid gap-2">' +
+                    '<button id="downloadResumeBtn" class="btn btn-outline-primary"><i class="fas fa-file-pdf me-2"></i>Download Resume</button>' +
+                    '</div>';
+                document.getElementById('downloadResumeBtn').addEventListener('click', async function() {
+                    this.disabled = true;
+                    this.textContent = 'Downloading...';
+                    try {
+                        var token = ATS.getToken();
+                        var resp = await fetch(ATS.API_BASE + '/applicants/' + currentPanelId + '/resume', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                        var blob = await resp.blob();
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        var disp = resp.headers.get('content-disposition') || '';
+                        var match = disp.match(/filename[^;=\n]*=(['"]?)([^'"\n;]+)\1/);
+                        a.download = match ? match[2] : 'resume';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    } catch(err) {
+                        ATS.notify('error', err.message || 'Failed to download resume');
+                    } finally {
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fas fa-file-pdf me-2"></i>Download Resume';
+                    }
+                });
+            }
+        } catch(err) {
+            content.innerHTML = '<div class="text-danger p-3">' + err.message + '</div>';
+        }
+    }
+
+    document.getElementById('panelStatusApplyBtn').addEventListener('click', async function(){
+        var s = document.getElementById('panelStatusSelect').value;
+        if (!s || !currentPanelId) return;
+        try {
+            await ATS.apiFetch('/applicants/' + currentPanelId + '/status', {method:'PATCH', body:JSON.stringify({status:s})});
+            ATS.notify('success', 'Status updated.');
+            loadPanelTab('overview');
+            loadApplicants();
+        } catch(e){ ATS.notify('danger', e.message); }
+    });
+    /* ---------- SCHEDULE INTERVIEW ---------- */
+    document.getElementById('scheduleInterviewSubmitBtn').addEventListener('click', async function() {
+        var form = document.getElementById('scheduleInterviewForm');
+        if (!form.reportValidity()) return;
+        if (!currentPanelId) { ATS.notify('error', 'No applicant selected'); return; }
+
+        var dateVal = document.getElementById('ivScheduledDate').value;
+        // datetime-local gives "2026-04-28T14:30" — append seconds for LocalDateTime, no UTC conversion
+        var scheduledDate = dateVal.length === 16 ? dateVal + ':00' : dateVal;
+
+        var payload = {
+            scheduledDate: scheduledDate,
+            durationMinutes: parseInt(document.getElementById('ivDuration').value) || 60,
+            interviewType: document.getElementById('ivType').value.trim(),
+            notes: document.getElementById('ivNotes').value.trim() || null,
+            generateMeetingLink: document.getElementById('ivGenerateLink').checked,
+            sendCalendarInvites: document.getElementById('ivSendCalendar').checked,
+            sendEmailNotifications: document.getElementById('ivSendEmail').checked
+        };
+
+        var btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scheduling...';
+        try {
+            await ATS.apiFetch('/applicants/' + currentPanelId + '/interviews', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            ATS.notify('success', 'Interview scheduled successfully');
+            bootstrap.Modal.getInstance(document.getElementById('scheduleInterviewModal')).hide();
+            form.reset();
+            document.getElementById('ivDuration').value = '60';
+            document.getElementById('ivGenerateLink').checked = true;
+            document.getElementById('ivSendCalendar').checked = true;
+            document.getElementById('ivSendEmail').checked = true;
+            loadApplicants();
+        } catch(err) {
+            ATS.notify('error', err.message || 'Failed to schedule interview');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-calendar-check me-1"></i>Schedule';
+        }
+    });
+
+    /* ---------- INIT ---------- */
+    (async function(){
+      await loadFacilityFilterOptions();
+      await loadApplicants();
+    })();
+    /*]]>*/
+</script>
+</body>
+</html>

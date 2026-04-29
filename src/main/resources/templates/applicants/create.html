@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='New Applicant')}"></head>
+<body class="app-body">
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div th:replace="~{fragments/sidebar :: sidebar(page='applicants')}"></div>
+<div class="app-main">
+  <header class="app-topbar">
+    <button id="sidebarToggle" class="topbar-icon-btn mobile-toggle me-2"><i class="fas fa-bars"></i></button>
+    <div class="topbar-breadcrumb">
+      <a href="/applicants" class="text-muted small text-decoration-none"><i class="fas fa-arrow-left me-1"></i>Applicants</a>
+      <p class="topbar-title mb-0 mt-1">New Applicant</p>
+    </div>
+    <div class="topbar-actions">
+      <button type="submit" form="createForm" class="btn btn-primary btn-sm"><i class="fas fa-floppy-disk me-1"></i>Save</button>
+    </div>
+  </header>
+
+  <main class="app-content">
+    <div class="row g-4" style="max-width:900px;margin:0 auto;">
+      <!-- Left column: form -->
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-semibold">Applicant Information</h6>
+          </div>
+          <div class="card-body">
+            <form id="createForm" novalidate>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Full Name <span class="text-danger">*</span></label>
+                  <input id="name" type="text" class="form-control" placeholder="Jane Doe" required/>
+                  <div class="invalid-feedback">Name is required.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Email <span class="text-danger">*</span></label>
+                  <input id="email" type="email" class="form-control" placeholder="jane@example.com" required/>
+                  <div class="invalid-feedback">Valid email is required.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Phone</label>
+                  <input id="phone" type="tel" class="form-control" placeholder="+1 555 000 0000"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Role / Position <span class="text-danger">*</span></label>
+                  <input id="role" type="text" class="form-control" placeholder="Security Guard" required/>
+                  <div class="invalid-feedback">Role is required.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Facility <span class="text-danger">*</span></label>
+                  <select id="facilityId" class="form-select" required>
+                    <option value="">Loading facilities...</option>
+                  </select>
+                  <div class="invalid-feedback">Facility is required.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Initial Status</label>
+                  <select id="status" class="form-select">
+                    <option value="INVITING_FOR_INTERVIEW">Inviting for Interview</option>
+                    <option value="INTERVIEW_COMPLETED">Interview Completed</option>
+                    <option value="HIRED">Hired</option>
+                    <option value="NOT_QUALIFIED">Not Qualified</option>
+                    <option value="NOT_INTERESTED">Not Interested</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-medium">Notes</label>
+                  <textarea id="notes" class="form-control" rows="4" placeholder="Any additional information..."></textarea>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: upload + tips -->
+      <div class="col-lg-4 d-flex flex-column gap-3">
+        <div class="card">
+          <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-semibold">Resume</h6>
+          </div>
+          <div class="card-body">
+            <div id="dropZone" class="drop-zone">
+              <i class="fas fa-cloud-arrow-up fa-2x mb-2 text-primary"></i>
+              <div class="fw-medium">Drag &amp; drop file here</div>
+              <div class="text-muted small mb-2">or</div>
+              <label for="resumeFile" class="btn btn-outline-primary btn-sm">Browse File</label>
+              <input id="resumeFile" type="file" accept=".pdf,.doc,.docx" style="display:none;" required/>
+              <div id="filePreview" class="mt-2 small text-muted" style="display:none;"></div>
+            </div>
+            <p class="text-muted small mt-2 mb-0">PDF, DOC or DOCX up to 10 MB (required)</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h6 class="fw-semibold mb-2"><i class="fas fa-lightbulb text-warning me-1"></i>Tips</h6>
+            <ul class="list-unstyled small text-muted mb-0 d-flex flex-column gap-1">
+              <li><i class="fas fa-check-circle text-success me-1"></i>Fill in all required fields (*)</li>
+              <li><i class="fas fa-check-circle text-success me-1"></i>Attach resume for faster onboarding</li>
+              <li><i class="fas fa-check-circle text-success me-1"></i>Assign to a facility right away</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    ATS.initPage();
+
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function formatLocalTimestamp(date) {
+    return date.getFullYear() + '-' +
+      pad2(date.getMonth() + 1) + '-' +
+      pad2(date.getDate()) + ' ' +
+      pad2(date.getHours()) + ':' +
+      pad2(date.getMinutes()) + ':' +
+      pad2(date.getSeconds());
+  }
+
+  function buildApplicantAddedNote(userNote) {
+    var base = '[' + formatLocalTimestamp(new Date()) + '] APPLICANT ADDED';
+    var note = (userNote || '').trim();
+    return note ? (base + ' : ' + note) : base;
+  }
+
+    /* Load facilities */
+    (async function(){
+        try {
+            var facilities = await ATS.apiFetch('/facilities');
+            var arr = Array.isArray(facilities) ? facilities : (facilities && (facilities.content || facilities.items || []));
+            var sel = document.getElementById('facilityId');
+            sel.innerHTML = '<option value="">— Select facility —</option>' + arr.map(function(f){
+                return '<option value="' + f.id + '">' + (f.name || f.facilityName) + '</option>';
+            }).join('');
+        } catch(e){ /* ignore */ }
+    })();
+
+    /* Drag-and-drop resume */
+    var dropZone = document.getElementById('dropZone');
+    var resumeFile = document.getElementById('resumeFile');
+    dropZone.addEventListener('dragover', function(e){ e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', function(){ dropZone.classList.remove('drag-over'); });
+    dropZone.addEventListener('drop', function(e){
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        var files = e.dataTransfer.files;
+        if (files.length) handleFile(files[0]);
+    });
+    resumeFile.addEventListener('change', function(){ if (this.files.length) handleFile(this.files[0]); });
+    function handleFile(file){
+        var preview = document.getElementById('filePreview');
+        preview.style.display = '';
+        preview.innerHTML = '<i class="fas fa-file me-1 text-primary"></i>' + file.name + ' (' + (file.size/1024).toFixed(0) + ' KB)' +
+            ' <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" id="clearFile">Remove</button>';
+        document.getElementById('clearFile').addEventListener('click', function(){
+            resumeFile.value = '';
+            preview.style.display = 'none';
+        });
+    }
+
+    /* Form submit */
+    document.getElementById('createForm').addEventListener('submit', async function(e){
+        e.preventDefault();
+      var formEl = this;
+      if (!formEl.checkValidity()) { formEl.classList.add('was-validated'); return; }
+      if (!resumeFile.files.length) {
+        ATS.notify('warning', 'Resume file is required.');
+        return;
+      }
+        var saveBtn = document.querySelector('[form="createForm"]');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+      var fd = new FormData();
+      fd.append('name', document.getElementById('name').value.trim());
+      fd.append('email', document.getElementById('email').value.trim());
+      var phoneNumber = document.getElementById('phone').value.trim();
+      if (phoneNumber) fd.append('phoneNumber', phoneNumber);
+      fd.append('role', document.getElementById('role').value.trim());
+      fd.append('facilityId', document.getElementById('facilityId').value);
+      fd.append('status', document.getElementById('status').value);
+      var notes = document.getElementById('notes').value.trim();
+      fd.append('notes', buildApplicantAddedNote(notes));
+      fd.append('resume', resumeFile.files[0]);
+        try {
+        await ATS.apiFetch('/applicants', {method:'POST', body:fd});
+            ATS.notify('success', 'Applicant created!');
+            setTimeout(function(){ window.location.href = '/applicants'; }, 800);
+        } catch(err){
+            ATS.notify('danger', err.message);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-floppy-disk me-1"></i>Save';
+        }
+    });
+    /*]]>*/
+</script>
+</body>
+</html>

@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Facility Profile')}"></head>
+<body class="app-body">
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div th:replace="~{fragments/sidebar :: sidebar(page='facilities')}"></div>
+<div class="app-main">
+    <header class="app-topbar">
+        <button id="sidebarToggle" class="topbar-icon-btn mobile-toggle me-2"><i class="fas fa-bars"></i></button>
+        <div class="topbar-breadcrumb">
+            <p class="topbar-title">Facility Profile</p>
+            <p class="topbar-subtitle" id="facilitySubtitle">Loading facility information...</p>
+        </div>
+        <div class="topbar-actions d-flex gap-2">
+            <a href="/dashboard" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <button id="toggleFacilityArchiveBtn" class="btn btn-outline-danger btn-sm admin-only" style="display:none;">
+                <i class="fas fa-box-archive me-1"></i>Archive Facility
+            </button>
+        </div>
+    </header>
+
+    <main class="app-content">
+
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-white border-0 pt-5 px-5">
+                    <h2 id="facilityTitle" class="fw-bold mb-2">Facility Profile</h2>
+                    <p class="text-muted mb-0">Edit facility details and manage users and recipients.</p>
+                </div>
+                <div class="card-body p-5">
+                    <form id="facilityEditForm" class="row g-4">
+                        <div class="col-12 col-md-6">
+                            <label for="facilityName" class="form-label">Name</label>
+                            <input id="facilityName" name="name" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="facilityLocation" class="form-label">Location</label>
+                            <input id="facilityLocation" name="location" class="form-control" required>
+                        </div>
+                        <div class="col-12">
+                            <button id="saveFacilityBtn" type="submit" class="btn btn-primary">
+                                <i class="fas fa-floppy-disk me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-5">
+                <div class="card-header bg-white border-0 pt-5 px-5 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6">Email Recipients</h5>
+                    <button id="reloadRecipientsBtn" class="btn btn-outline-primary btn-sm">Reload</button>
+                </div>
+                <div class="card-body p-5 border-bottom">
+                    <form id="addRecipientForm" class="row g-4">
+                        <div class="col-12 col-md-4">
+                            <label for="recipientEmail" class="form-label">Email</label>
+                            <input id="recipientEmail" type="email" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="recipientName" class="form-label">Name (optional)</label>
+                            <input id="recipientName" class="form-control">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="recipientIsActive" class="form-label">Status</label>
+                            <select id="recipientIsActive" class="form-select">
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2 d-grid align-self-end">
+                            <button type="submit" class="btn btn-primary py-3">Add</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-body p-5">
+                    <div class="d-flex justify-content-end mb-4">
+                        <div class="form-check pt-1">
+                            <input class="form-check-input" type="checkbox" id="recipientsActiveOnly" checked>
+                            <label class="form-check-label" for="recipientsActiveOnly">Active only</label>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody id="recipientTableBody">
+                            <tr>
+                                <td colspan="4" class="text-muted p-4">Loading...</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mt-5 admin-only" id="facilityUsersCard" style="display:none;">
+                <div class="card-header bg-white border-0 pt-5 px-5 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold fs-6">Facility Users</h5>
+                    <div class="d-flex gap-2">
+                        <button id="addUserBtn" class="btn btn-primary btn-sm">
+                            <i class="fas fa-user-plus me-2"></i>Add User
+                        </button>
+                        <button id="reloadUsersBtn" class="btn btn-outline-primary btn-sm">Reload</button>
+                    </div>
+                </div>
+                <div class="card-body p-5">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody id="facilityUsersTableBody">
+                            <tr>
+                                <td colspan="3" class="text-muted p-4">Loading...</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold">Assign User to Facility</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="userEmailInput" class="form-label">User Email</label>
+                    <input type="email" id="userEmailInput" class="form-control" placeholder="user@example.com" required>
+                </div>
+                <p class="text-muted small">Enter the email address of an existing user to assign them to this facility.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmAddUserBtn" class="btn btn-primary">
+                    <i class="fas fa-check me-2"></i>Assign User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editRecipientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold">Edit Email Recipient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editRecipientForm" class="row g-3">
+                    <input type="hidden" id="editRecipientId" />
+                    <div class="col-12">
+                        <label for="editRecipientEmail" class="form-label">Email</label>
+                        <input type="email" id="editRecipientEmail" class="form-control" required>
+                    </div>
+                    <div class="col-12">
+                        <label for="editRecipientName" class="form-label">Name (optional)</label>
+                        <input type="text" id="editRecipientName" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editRecipientActive">
+                            <label class="form-check-label" for="editRecipientActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="saveRecipientEditBtn" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const FACILITY_ID = /*[[${facilityId}]]*/ '';
+
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+        window.location.href = '/login';
+    }
+
+    function parseJwt(jwt) {
+        try {
+            const payloadPart = jwt.split('.')[1] || '';
+            const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+            const padLen = (4 - (normalized.length % 4)) % 4;
+            return JSON.parse(atob(normalized + '='.repeat(padLen)));
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function collectNormalizedRoles(values) {
+        const queue = Array.isArray(values) ? [...values] : [values];
+        const normalized = [];
+
+        while (queue.length) {
+            const item = queue.shift();
+            if (!item) {
+                continue;
+            }
+
+            if (Array.isArray(item)) {
+                queue.push(...item);
+                continue;
+            }
+
+            if (typeof item === 'string') {
+                const parts = item.split(',').map(p => p.trim()).filter(Boolean);
+                normalized.push(...parts.map(p => p.toUpperCase()));
+                continue;
+            }
+
+            if (typeof item === 'object') {
+                queue.push(item.role, item.name, item.authority, item.value);
+            }
+        }
+
+        return [...new Set(normalized)];
+    }
+
+    function hasAdminRole(roleList) {
+        return roleList.some(role => role === 'ADMIN' || role === 'ROLE_ADMIN' || role.endsWith('_ADMIN'));
+    }
+
+    const claims = parseJwt(token);
+    let storedUserInfo = {};
+    try {
+        storedUserInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+    } catch (e) {
+        storedUserInfo = {};
+    }
+
+    const roles = collectNormalizedRoles([
+        claims.role,
+        claims.roles,
+        claims.authorities,
+        claims.scope,
+        claims.scopes,
+        storedUserInfo.role,
+        storedUserInfo.roles,
+        storedUserInfo.authorities
+    ]);
+
+    let isAdmin = hasAdminRole(roles);
+
+    function notifyUser(type, message) {
+        if (typeof window.appNotify === 'function') {
+            window.appNotify(type, message);
+        }
+    }
+
+    function clearNotifications() {
+        if (typeof window.clearAppNotifications === 'function') {
+            window.clearAppNotifications();
+        }
+    }
+
+    function applyRoleUiState() {
+        const roleBadge = document.getElementById('roleBadge');
+        roleBadge.textContent = isAdmin ? 'ADMIN' : 'USER';
+        roleBadge.className = isAdmin ? 'badge text-bg-danger' : 'badge text-bg-primary';
+
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = isAdmin ? '' : 'none';
+        });
+
+        document.getElementById('facilityUsersCard').style.display = isAdmin ? 'block' : 'none';
+
+    }
+
+    async function apiFetch(path, options = {}) {
+        const config = {
+            ...options,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...(options.body ? {'Content-Type': 'application/json'} : {}),
+                ...(options.headers || {})
+            }
+        };
+
+        const res = await fetch(`${ATS.API_BASE}${path}`, config);
+        const text = await res.text();
+        let data = null;
+
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                data = text;
+            }
+        }
+
+        if (!res.ok) {
+            const message = (data && (data.message || data.error)) || `Request failed (${res.status})`;
+            const err = new Error(message);
+            err.status = res.status;
+            throw err;
+        }
+
+        return data;
+    }
+
+    async function resolveAdminAccess() {
+        if (isAdmin) {
+            return;
+        }
+
+        try {
+            await apiFetch('/admin-requests/pending');
+            isAdmin = true;
+        } catch (err) {
+            if (err && err.status === 401) {
+                localStorage.removeItem('jwt_token');
+                localStorage.removeItem('user_info');
+                window.location.href = '/login';
+            }
+        }
+    }
+
+    function toFacilityModel(item) {
+        return {
+            id: item?.id ?? item?.facilityId ?? item?.facility?.id ?? FACILITY_ID,
+            name: item?.name ?? item?.facilityName ?? item?.facility?.name ?? '',
+            location: item?.location ?? item?.facilityLocation ?? item?.facility?.location ?? '',
+            isActive: item?.isActive ?? item?.active ?? true
+        };
+    }
+
+    function updateHeader(facility) {
+        document.getElementById('facilityTitle').textContent = facility.name || 'Facility Profile';
+        const statusText = facility.isActive ? 'Active' : 'Inactive';
+        document.getElementById('facilitySubtitle').textContent = `${facility.location || 'Unknown location'} - ${statusText}`;
+    }
+
+    function updateEditForm(facility) {
+        document.getElementById('facilityName').value = facility.name || '';
+        document.getElementById('facilityLocation').value = facility.location || '';
+    }
+
+    let currentFacility = null;
+
+    function setFacilityArchiveActionUi() {
+        const btn = document.getElementById('toggleFacilityArchiveBtn');
+        if (!btn || !isAdmin || !currentFacility) {
+            return;
+        }
+
+        btn.style.display = '';
+        if (currentFacility.isActive) {
+            btn.className = 'btn btn-outline-danger btn-sm admin-only';
+            btn.innerHTML = '<i class="fas fa-box-archive me-1"></i>Archive Facility';
+        } else {
+            btn.className = 'btn btn-success btn-sm admin-only';
+            btn.innerHTML = '<i class="fas fa-rotate-left me-1"></i>Recover Facility';
+        }
+    }
+
+    function formatDateTime(value) {
+        if (!value) {
+            return '-';
+        }
+
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+            return value;
+        }
+
+        return new Intl.DateTimeFormat(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).format(date);
+    }
+
+
+    function buildFacilityQuery() {
+        const params = new URLSearchParams(window.location.search || '');
+        const query = new URLSearchParams();
+
+        if (params.has('includeInactive')) {
+            query.set('includeInactive', params.get('includeInactive'));
+        }
+        if (params.has('search')) {
+            query.set('search', params.get('search'));
+        }
+
+        return query.toString() ? `?${query.toString()}` : '';
+    }
+
+    function extractRecipientModel(item) {
+        return {
+            id: item?.id ?? item?.recipientId ?? '',
+            email: item?.email ?? '-',
+            name: item?.name ?? '-',
+            isActive: item?.isActive ?? item?.active ?? true
+        };
+    }
+
+    function extractUserModel(item) {
+        return {
+            id: item?.id ?? item?.userId ?? '',
+            email: item?.email ?? item?.userEmail ?? '-',
+            role: item?.role ?? item?.authority ?? item?.userRole ?? '-'
+        };
+    }
+
+    async function loadRecipients() {
+        const tbody = document.getElementById('recipientTableBody');
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted p-3">Loading...</td></tr>';
+
+        const query = new URLSearchParams();
+        const activeOnly = document.getElementById('recipientsActiveOnly').checked;
+        if (activeOnly) {
+            query.set('isActive', 'true');
+        }
+
+        const suffix = query.toString() ? `?${query.toString()}` : '';
+        const payload = await apiFetch(`/facilities/${FACILITY_ID}/email-recipients${suffix}`);
+        const rows = (Array.isArray(payload) ? payload : []).map(extractRecipientModel);
+
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted p-3">No recipients found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(r => `
+            <tr>
+                <td>${r.email}</td>
+                <td>${r.name}</td>
+                <td>${r.isActive ? '<span class="badge text-bg-success">Active</span>' : '<span class="badge text-bg-secondary">Inactive</span>'}</td>
+                <td class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" data-edit-recipient="${r.id}" data-email="${r.email}" data-name="${r.name === '-' ? '' : r.name}" data-active="${r.isActive}">Edit</button>
+                    <button class="btn btn-sm ${r.isActive ? 'btn-outline-secondary' : 'btn-outline-success'}" data-toggle-recipient-status="${r.id}" data-active="${r.isActive}">${r.isActive ? 'Set Inactive' : 'Set Active'}</button>
+                    <button class="btn btn-sm btn-outline-danger" data-delete-recipient="${r.id}">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadFacilityUsers() {
+        if (!isAdmin) {
+            return;
+        }
+
+        const tbody = document.getElementById('facilityUsersTableBody');
+        tbody.innerHTML = '<tr><td colspan="3" class="text-muted p-3">Loading...</td></tr>';
+
+        const payload = await apiFetch(`/admin/facilities/${FACILITY_ID}/users`);
+        const rows = (Array.isArray(payload) ? payload : []).map(extractUserModel);
+
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-muted p-3">No users found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(u => `
+            <tr>
+                <td>${u.email}</td>
+                <td>${u.role}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" data-remove-user="${u.id}" data-email="${u.email}">Remove</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadFacility() {
+        const data = await apiFetch(`/facilities/${FACILITY_ID}${buildFacilityQuery()}`);
+        const rows = Array.isArray(data) ? data : [data];
+        const facility = toFacilityModel(rows[0] || {});
+        currentFacility = facility;
+        updateHeader(facility);
+        updateEditForm(facility);
+        setFacilityArchiveActionUi();
+    }
+
+    async function saveFacility(e) {
+        e.preventDefault();
+        clearNotifications();
+
+        const name = document.getElementById('facilityName').value.trim();
+        const location = document.getElementById('facilityLocation').value.trim();
+
+        if (!name || !location) {
+            notifyUser('warning', 'Name and location are required.');
+            return;
+        }
+
+        try {
+            const updated = await apiFetch(`/admin/facilities/${FACILITY_ID}`, {
+                method: 'PUT',
+                body: JSON.stringify({name, location})
+            });
+
+            const facility = toFacilityModel(updated || {name, location});
+            updateHeader(facility);
+            updateEditForm(facility);
+            notifyUser('success', 'Facility updated successfully.');
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to update facility.');
+        }
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('user_info');
+        window.location.href = '/login';
+    });
+
+    document.getElementById('facilityEditForm').addEventListener('submit', saveFacility);
+
+    document.getElementById('toggleFacilityArchiveBtn').addEventListener('click', async function () {
+        if (!currentFacility) {
+            return;
+        }
+
+        const isActive = !!currentFacility.isActive;
+        const confirmed = await ATS.confirm(
+            isActive ? 'Archive this facility?' : 'Recover this facility?',
+            { title: isActive ? 'Archive Facility' : 'Recover Facility', confirmText: isActive ? 'Archive' : 'Recover' }
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        const btn = this;
+        btn.disabled = true;
+        try {
+            if (isActive) {
+                const response = await apiFetch(`/admin/facilities/${FACILITY_ID}`, { method: 'DELETE' });
+                currentFacility.isActive = false;
+                notifyUser('success', (response && response.message) || 'Facility archived successfully.');
+            } else {
+                const response = await apiFetch(`/admin/facilities/${FACILITY_ID}/recover`, { method: 'POST' });
+                currentFacility.isActive = true;
+                notifyUser('success', (response && response.message) || 'Facility recovered successfully.');
+            }
+            updateHeader(currentFacility);
+            setFacilityArchiveActionUi();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to update facility state.');
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+
+    document.getElementById('addRecipientForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearNotifications();
+
+        const email = document.getElementById('recipientEmail').value.trim();
+        const name = document.getElementById('recipientName').value.trim();
+        const isActive = document.getElementById('recipientIsActive').value === 'true';
+
+        if (!email) {
+            notifyUser('warning', 'Recipient email is required.');
+            return;
+        }
+
+        try {
+            await apiFetch(`/facilities/${FACILITY_ID}/email-recipients`, {
+                method: 'POST',
+                body: JSON.stringify({email, name: name || null, isActive})
+            });
+            notifyUser('success', 'Recipient added successfully.');
+            e.target.reset();
+            document.getElementById('recipientIsActive').value = 'true';
+            await loadRecipients();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to add recipient.');
+        }
+    });
+
+    document.getElementById('reloadRecipientsBtn').addEventListener('click', async function () {
+        clearNotifications();
+        try {
+            await loadRecipients();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load recipients.');
+        }
+    });
+
+    document.getElementById('recipientsActiveOnly').addEventListener('change', async function () {
+        clearNotifications();
+        try {
+            await loadRecipients();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load recipients.');
+        }
+    });
+
+    document.getElementById('recipientTableBody').addEventListener('click', async function (e) {
+        const toggleButton = e.target.closest('[data-toggle-recipient-status]');
+        if (toggleButton) {
+            const recipientId = toggleButton.getAttribute('data-toggle-recipient-status');
+            const currentActive = toggleButton.getAttribute('data-active') === 'true';
+            clearNotifications();
+            const confirmed = await ATS.confirm(
+                currentActive ? 'Set this recipient as inactive?' : 'Set this recipient as active?',
+                { title: 'Update Recipient Status', confirmText: 'Apply' }
+            );
+            if (!confirmed) {
+                return;
+            }
+            try {
+                await apiFetch(`/facilities/${FACILITY_ID}/email-recipients/${recipientId}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ isActive: !currentActive })
+                });
+                notifyUser('success', `Recipient marked ${currentActive ? 'inactive' : 'active'} successfully.`);
+                await loadRecipients();
+            } catch (err) {
+                notifyUser('danger', err.message || 'Failed to update recipient status.');
+            }
+            return;
+        }
+
+        const deleteButton = e.target.closest('[data-delete-recipient]');
+        if (deleteButton) {
+            const recipientId = deleteButton.getAttribute('data-delete-recipient');
+            clearNotifications();
+            const confirmed = await ATS.confirm('Delete this recipient?', { title: 'Delete Recipient', confirmText: 'Delete' });
+            if (!confirmed) {
+                return;
+            }
+            try {
+                await apiFetch(`/facilities/${FACILITY_ID}/email-recipients/${recipientId}`, {
+                    method: 'DELETE'
+                });
+                notifyUser('success', 'Recipient removed successfully.');
+                await loadRecipients();
+            } catch (err) {
+                notifyUser('danger', err.message || 'Failed to remove recipient.');
+            }
+            return;
+        }
+
+        const editButton = e.target.closest('[data-edit-recipient]');
+        if (!editButton) {
+            return;
+        }
+
+        const recipientId = editButton.getAttribute('data-edit-recipient');
+        const currentEmail = editButton.getAttribute('data-email') || '';
+        const currentName = editButton.getAttribute('data-name') || '';
+        const currentActive = editButton.getAttribute('data-active') === 'true';
+
+        if (!editRecipientModal) {
+            editRecipientModal = new bootstrap.Modal(document.getElementById('editRecipientModal'));
+        }
+        document.getElementById('editRecipientId').value = recipientId;
+        document.getElementById('editRecipientEmail').value = currentEmail;
+        document.getElementById('editRecipientName').value = currentName;
+        document.getElementById('editRecipientActive').checked = currentActive;
+        editRecipientModal.show();
+    });
+
+    document.getElementById('reloadUsersBtn').addEventListener('click', async function () {
+        clearNotifications();
+        try {
+            await loadFacilityUsers();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load facility users.');
+        }
+    });
+
+    document.getElementById('facilityUsersTableBody').addEventListener('click', async function (e) {
+        const removeButton = e.target.closest('[data-remove-user]');
+        if (!removeButton) {
+            return;
+        }
+
+        const userId = removeButton.getAttribute('data-remove-user');
+        const userEmail = removeButton.getAttribute('data-email') || 'this user';
+        clearNotifications();
+        const confirmed = await ATS.confirm('Remove ' + userEmail + ' from this facility?', { title: 'Remove User', confirmText: 'Remove' });
+        if (!confirmed) {
+            return;
+        }
+        try {
+            await apiFetch(`/admin/facilities/${FACILITY_ID}/users/${userId}`, {
+                method: 'DELETE'
+            });
+            notifyUser('success', 'User removed from facility successfully.');
+            await loadFacilityUsers();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to remove user from facility.');
+        }
+    });
+
+    // Add User Modal Functionality
+    let addUserModal = null;
+    let editRecipientModal = null;
+
+    document.getElementById('saveRecipientEditBtn').addEventListener('click', async function () {
+        const form = document.getElementById('editRecipientForm');
+        if (!form.reportValidity()) {
+            return;
+        }
+
+        const recipientId = document.getElementById('editRecipientId').value;
+        const nextEmail = document.getElementById('editRecipientEmail').value.trim();
+        const nextName = document.getElementById('editRecipientName').value.trim();
+        const nextActive = document.getElementById('editRecipientActive').checked;
+        const btn = this;
+        btn.disabled = true;
+        clearNotifications();
+        try {
+            await apiFetch(`/facilities/${FACILITY_ID}/email-recipients/${recipientId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    email: nextEmail,
+                    name: nextName || null,
+                    isActive: nextActive
+                })
+            });
+            notifyUser('success', 'Recipient updated successfully.');
+            if (editRecipientModal) {
+                editRecipientModal.hide();
+            }
+            await loadRecipients();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to update recipient.');
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    document.getElementById('addUserBtn').addEventListener('click', function () {
+        clearNotifications();
+        
+        if (!addUserModal) {
+            addUserModal = new bootstrap.Modal(document.getElementById('addUserModal'));
+        }
+        
+        // Clear the input field
+        document.getElementById('userEmailInput').value = '';
+        document.getElementById('userEmailInput').focus();
+        
+        addUserModal.show();
+    });
+
+    document.getElementById('confirmAddUserBtn').addEventListener('click', async function () {
+        const userEmail = document.getElementById('userEmailInput').value.trim();
+
+        if (!userEmail) {
+            notifyUser('warning', 'Please enter a user email address.');
+            return;
+        }
+
+        clearNotifications();
+        try {
+            await apiFetch(`/admin/facilities/${FACILITY_ID}/addUser`, {
+                method: 'POST',
+                body: JSON.stringify({ email: userEmail })
+            });
+
+            notifyUser('success', 'User assigned to facility successfully.');
+            addUserModal.hide();
+            await loadFacilityUsers();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to assign user to facility.');
+        }
+    });
+
+    (async function init() {
+        clearNotifications();
+        try {
+            await resolveAdminAccess();
+            applyRoleUiState();
+            await loadFacility();
+            await loadRecipients();
+            await loadFacilityUsers();
+        } catch (err) {
+            notifyUser('danger', err.message || 'Failed to load facility profile.');
+        }
+    })();
+</script>
+</body>
+</html>
