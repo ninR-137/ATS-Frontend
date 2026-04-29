@@ -51,6 +51,15 @@
             <span>Create Facility</span>
         </a>
 
+        <div class="sidebar-section-title non-admin-only" style="display:none;">Access</div>
+        <div class="non-admin-only" id="adminRequestPanel" style="display:none;">
+            <button id="requestAdminAccessBtn" class="sidebar-link-v2 sidebar-cta-link" type="button">
+                <span class="link-icon"><i class="fas fa-user-shield"></i></span>
+                <span id="requestAdminAccessLabel">Request Admin Access</span>
+            </button>
+            <div id="adminRequestStatus" class="sidebar-inline-status" style="display:none;"></div>
+        </div>
+
     </div>
 
     <!-- Footer: user info + logout -->

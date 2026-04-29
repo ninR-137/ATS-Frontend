@@ -115,6 +115,86 @@
         }
     };
 
+    ATS.resolveLatestAdminRequest = function (payload) {
+        const list = Array.isArray(payload)
+            ? payload
+            : (payload && Array.isArray(payload.items) ? payload.items : []);
+        if (!list.length) return null;
+
+        return list
+            .slice()
+            .sort(function (a, b) {
+                const aTime = new Date(a.requestedAt || a.createdAt || 0).getTime();
+                const bTime = new Date(b.requestedAt || b.createdAt || 0).getTime();
+                return bTime - aTime;
+            })[0];
+    };
+
+    ATS.initAdminRequestUi = async function () {
+        const panel = document.getElementById('adminRequestPanel');
+        const btn = document.getElementById('requestAdminAccessBtn');
+        const labelEl = document.getElementById('requestAdminAccessLabel');
+        const statusEl = document.getElementById('adminRequestStatus');
+        if (!panel || !btn || !labelEl || !statusEl || ATS.isAdmin) return;
+
+        const renderState = function (request) {
+            if (!request) {
+                statusEl.style.display = 'none';
+                btn.disabled = false;
+                labelEl.textContent = 'Request Admin Access';
+                btn.querySelector('.link-icon').innerHTML = '<i class="fas fa-user-shield"></i>';
+                return;
+            }
+
+            const status = String(request.status || 'PENDING').toUpperCase();
+            if (status === 'PENDING') {
+                btn.disabled = true;
+                labelEl.textContent = 'Request Pending';
+                btn.querySelector('.link-icon').innerHTML = '<i class="fas fa-hourglass-half"></i>';
+                statusEl.textContent = 'Your admin access request is pending review.';
+                statusEl.style.display = '';
+                return;
+            }
+
+            if (status === 'APPROVED') {
+                btn.disabled = true;
+                labelEl.textContent = 'Approved';
+                btn.querySelector('.link-icon').innerHTML = '<i class="fas fa-check"></i>';
+                statusEl.textContent = 'Your admin request was approved. Please refresh or sign in again.';
+                statusEl.style.display = '';
+                return;
+            }
+
+            btn.disabled = false;
+            labelEl.textContent = 'Request Admin Access Again';
+            btn.querySelector('.link-icon').innerHTML = '<i class="fas fa-repeat"></i>';
+            statusEl.textContent = 'Your previous request was rejected. You can submit a new request.';
+            statusEl.style.display = '';
+        };
+
+        try {
+            const mine = await ATS.apiFetch('/admin-requests/me');
+            renderState(ATS.resolveLatestAdminRequest(mine));
+        } catch (err) {
+            if (err && err.status === 404) {
+                renderState(null);
+            }
+        }
+
+        btn.addEventListener('click', async function () {
+            if (btn.disabled) return;
+            btn.disabled = true;
+            try {
+                await ATS.apiFetch('/admin-requests', { method: 'POST' });
+                ATS.notify('success', 'Admin access request submitted successfully.');
+                renderState({ status: 'PENDING' });
+            } catch (err) {
+                ATS.notify('danger', err.message || 'Failed to submit admin access request.');
+                btn.disabled = false;
+            }
+        });
+    };
+
     /* ---- Auth ---- */
     ATS.getToken = function () { return localStorage.getItem('jwt_token'); };
 
@@ -275,6 +355,8 @@
                 overlay.classList.remove('show');
             });
         }
+
+        void ATS.initAdminRequestUi();
 
         void ATS.refreshAdminAccess();
 

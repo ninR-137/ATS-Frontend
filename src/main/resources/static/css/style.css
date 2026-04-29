@@ -613,6 +613,30 @@ body.auth-page {
     font-weight: 600;
 }
 
+.sidebar-cta-link {
+    background: rgb(255 255 255 / 0.16);
+    border: 1px solid rgb(255 255 255 / 0.28);
+    color: white;
+    margin-top: 0.2rem;
+}
+
+.sidebar-cta-link:hover {
+    background: rgb(255 255 255 / 0.24);
+    color: white;
+}
+
+.sidebar-cta-link:disabled {
+    opacity: 0.85;
+    cursor: not-allowed;
+}
+
+.sidebar-inline-status {
+    margin: 0.4rem 0.75rem 0.1rem;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    color: rgb(255 255 255 / 0.78);
+}
+
 .sidebar-link-v2 .link-icon {
     width: 20px;
     text-align: center;
